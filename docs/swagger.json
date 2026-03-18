@@ -1,0 +1,380 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "FasoMarket API",
+    "description": "Documentation interactive des routes de l'API FasoMarket. Cette documentation couvre l'authentification, les boutiques, les produits, le panier, les commandes, les paiements et l'administration.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Serveur de développement"
+    }
+  ],
+  "tags": [
+    { "name": "Authentification", "description": "Gestion des utilisateurs et sessions" },
+    { "name": "Boutiques", "description": "Gestion des boutiques (Stores)" },
+    { "name": "Produits", "description": "Catalogue de produits" },
+    { "name": "Panier", "description": "Gestion du panier d'achat" },
+    { "name": "Commandes", "description": "Gestion des commandes clients" },
+    { "name": "Paiements", "description": "Traitement des transactions" },
+    { "name": "Messagerie", "description": "Système de communication" },
+    { "name": "Vendeur", "description": "Espace vendeur et statistiques" },
+    { "name": "Administration", "description": "Gestion de la plateforme" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentification"],
+        "summary": "Inscription d'un nouvel utilisateur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password"],
+                "properties": {
+                  "name": { "type": "string", "example": "Jean Dupont" },
+                  "email": { "type": "string", "example": "jean@example.com" },
+                  "password": { "type": "string", "example": "password123" },
+                  "role": { "type": "string", "enum": ["customer", "vendor"], "example": "customer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Compte créé" } }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentification"],
+        "summary": "Connexion utilisateur",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "jean@example.com" },
+                  "password": { "type": "string", "example": "password123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Authentification réussie" } }
+      }
+    },
+    "/auth/profile": {
+      "get": { 
+        "tags": ["Authentification"], 
+        "summary": "Récupérer le profil utilisateur", 
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Succès" } } 
+      },
+      "put": { 
+        "tags": ["Authentification"], 
+        "summary": "Modifier le profil", 
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Profil mis à jour" } } 
+      }
+    },
+    "/auth/change-password": {
+      "put": { 
+        "tags": ["Authentification"], 
+        "summary": "Changer le mot de passe", 
+        "security": [{ "bearerAuth": [] }],
+        "responses": { "200": { "description": "Mot de passe modifié" } } 
+      }
+    },
+    "/stores": {
+      "get": { "tags": ["Boutiques"], "summary": "Liste de toutes les boutiques", "responses": { "200": { "description": "Succès" } } },
+      "post": {
+        "tags": ["Boutiques"],
+        "summary": "Créer une nouvelle boutique",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "description"],
+                "properties": {
+                  "name": { "type": "string", "example": "Ma Super Boutique" },
+                  "description": { "type": "string", "example": "Nous vendons des produits locaux." },
+                  "logo": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Boutique créée" } }
+      }
+    },
+    "/stores/{slug}": {
+      "get": { "tags": ["Boutiques"], "summary": "Détails d'une boutique par slug", "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Succès" } } }
+    },
+    "/stores/{slug}/products": {
+      "get": { "tags": ["Boutiques"], "summary": "Liste des produits d'une boutique", "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Succès" } } }
+    },
+    "/stores/{id}": {
+      "put": {
+        "tags": ["Boutiques"],
+        "summary": "Modifier une boutique",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "logo": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Mise à jour réussie" } }
+      },
+      "delete": { "tags": ["Boutiques"], "summary": "Supprimer une boutique", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "security": [{ "bearerAuth": [] }], "responses": { "204": { "description": "Supprimée" } } }
+    },
+    "/stores/check-slug/{slug}": {
+      "get": { "tags": ["Boutiques"], "summary": "Vérifier la disponibilité d'un slug", "parameters": [{ "name": "slug", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Disponibilité renvoyée" } } }
+    },
+    "/products": {
+      "get": { "tags": ["Produits"], "summary": "Liste des produits (pagination, filtres)", "responses": { "200": { "description": "Succès" } } },
+      "post": {
+        "tags": ["Produits"],
+        "summary": "Créer un produit",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "description", "price", "category", "stock", "store"],
+                "properties": {
+                  "name": { "type": "string", "example": "Savon Karité" },
+                  "description": { "type": "string", "example": "Pur beurre de karité." },
+                  "price": { "type": "number", "example": 1500 },
+                  "category": { "type": "string", "example": "Cosmétique" },
+                  "stock": { "type": "integer", "example": 20 },
+                  "store": { "type": "string", "example": "STORE_ID_HERE" },
+                  "images": { "type": "array", "items": { "type": "string", "format": "binary" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Produit créé" } }
+      }
+    },
+    "/products/{id}": {
+      "get": { "tags": ["Produits"], "summary": "Détails d'un produit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Succès" } } },
+      "put": {
+        "tags": ["Produits"],
+        "summary": "Modifier un produit",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "price": { "type": "number" },
+                  "category": { "type": "string" },
+                  "stock": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Modifié" } }
+      },
+      "delete": { "tags": ["Produits"], "summary": "Supprimer un produit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Supprimé" } } }
+    },
+    "/products/{id}/images": {
+      "post": { "tags": ["Produits"], "summary": "Ajouter des images à un produit", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Images ajoutées" } } },
+      "delete": { "tags": ["Produits"], "summary": "Supprimer une image", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Supprimée" } } }
+    },
+    "/products/categories": {
+      "get": { "tags": ["Produits"], "summary": "Liste des catégories", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/cart": {
+      "get": { "tags": ["Panier"], "summary": "Voir le contenu du panier", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "Succès" } } },
+      "post": {
+        "tags": ["Panier"],
+        "summary": "Ajouter un produit au panier",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["productId", "quantity"],
+                "properties": {
+                  "productId": { "type": "string", "example": "PRODUCT_ID_HERE" },
+                  "quantity": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Ajouté" } }
+      },
+      "delete": { "tags": ["Panier"], "summary": "Vider le panier", "security": [{ "bearerAuth": [] }], "responses": { "204": { "description": "Vidé" } } }
+    },
+    "/cart/{productId}": {
+      "put": { "tags": ["Panier"], "summary": "Modifier la quantité d'un produit", "parameters": [{ "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Quantité mise à jour" } } },
+      "delete": { "tags": ["Panier"], "summary": "Retirer un produit du panier", "parameters": [{ "name": "productId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Retiré" } } }
+    },
+    "/orders": {
+      "post": {
+        "tags": ["Commandes"],
+        "summary": "Créer une commande",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "paymentMethod": { "type": "string", "enum": ["mobile_money", "cash"], "example": "mobile_money" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Commande créée" } }
+      }
+    },
+    "/orders/my-orders": {
+      "get": { "tags": ["Commandes"], "summary": "Liste des commandes de l'utilisateur", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/orders/{id}": {
+      "get": { "tags": ["Commandes"], "summary": "Détails d'une commande", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Succès" } } }
+    },
+    "/payments/mobile-money": {
+      "post": {
+        "tags": ["Paiements"],
+        "summary": "Paiement via Mobile Money",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["orderId"],
+                "properties": {
+                  "orderId": { "type": "string", "example": "ID_DE_LA_COMMANDE_ICI" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Paiement initié" } }
+      }
+    },
+    "/messages/conversation": {
+      "post": {
+        "tags": ["Messagerie"],
+        "summary": "Créer une conversation",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["recipientId"],
+                "properties": {
+                  "recipientId": { "type": "string", "example": "USER_ID_HERE" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Conversation créée" } }
+      }
+    },
+    "/messages": {
+      "post": {
+        "tags": ["Messagerie"],
+        "summary": "Envoyer un message",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["conversationId", "content"],
+                "properties": {
+                  "conversationId": { "type": "string", "example": "CONVERSATION_ID_HERE" },
+                  "content": { "type": "string", "example": "Bonjour, est-ce que le produit est disponible ?" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "201": { "description": "Message envoyé" } }
+      }
+    },
+    "/messages/conversations": {
+      "get": { "tags": ["Messagerie"], "summary": "Liste des conversations", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/messages/{conversationId}": {
+      "get": { "tags": ["Messagerie"], "summary": "Récupérer les messages d'une conversation", "parameters": [{ "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Succès" } } }
+    },
+    "/vendor/orders": {
+      "get": { "tags": ["Vendeur"], "summary": "Commandes reçues par le vendeur", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/vendor/stats": {
+      "get": { "tags": ["Vendeur"], "summary": "Statistiques du vendeur", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/vendor/orders/{id}/status": {
+      "put": { "tags": ["Vendeur"], "summary": "Mettre à jour le statut d'une commande", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Statut mis à jour" } } }
+    },
+    "/admin/vendors": {
+      "get": { "tags": ["Administration"], "summary": "Liste des vendeurs pour admin", "responses": { "200": { "description": "Succès" } } }
+    },
+    "/admin/vendors/{id}/approve": {
+      "put": { "tags": ["Administration"], "summary": "Approuver un vendeur", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Vendeur approuvé" } } }
+    },
+    "/admin/vendors/{id}/reject": {
+      "put": { "tags": ["Administration"], "summary": "Rejeter un vendeur", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Vendeur rejeté" } } }
+    },
+    "/admin/users": {
+      "get": { "tags": ["Administration"], "summary": "Liste des utilisateurs pour admin", "responses": { "200": { "description": "Succès" } } }
+    }
+  }
+}
