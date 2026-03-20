@@ -1,305 +1,346 @@
-import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-    Search, 
-    ShoppingBag, 
-    User, 
-    ChevronRight, 
     Star, 
-    Plus, 
-    Minus, 
-    Store, 
-    Heart,
+    ShoppingCart, 
+    Heart, 
+    Share2, 
+    ChevronLeft, 
+    ChevronRight, 
+    ShieldCheck, 
+    Truck, 
+    RotateCcw,
+    Plus,
+    Minus,
+    Store,
     ArrowRight,
-    Camera
+    Loader2,
+    ShoppingBag,
+    Eye,
+    Zap
 } from 'lucide-react';
+import { productService } from '../services/productService';
+import { relationService } from '../services/relationService';
+import { authService } from '../services/authService';
+import { useToast } from '../contexts/ToastContext';
+import { useCart } from '../contexts/CartContext';
 
 export default function ProductDetail() {
     const { id } = useParams();
+    const navigate = useNavigate();
+    const { addToCart, cartCount } = useCart();
+    const [product, setProduct] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState(0);
+    const [addingToCart, setAddingToCart] = useState(false);
+    const [socialProof, setSocialProof] = useState(null);
+    const [viewersCount, setViewersCount] = useState(Math.floor(Math.random() * 8) + 2);
+    const [relatedProducts, setRelatedProducts] = useState([]);
+    
+    const { showToast } = useToast();
 
-    const product = {
-        name: "Vase Koudougou Artisanal",
-        category: "ARTISANAT LOCAL",
-        price: "12.500",
-        currency: "FCFA",
-        rating: 4.8,
-        reviewsCount: 24,
-        description: "Façonné à la main par les maîtres potiers de la région de Koudougou, ce vase en terre cuite incarne l'élégance du savoir-faire traditionnel burkinabè. Chaque pièce est unique, arborant des motifs géométriques gravés qui racontent l'histoire et les valeurs de notre culture. Idéal pour sublimer votre intérieur avec une touche authentique et chaleureuse.",
-        images: [
-            "https://images.unsplash.com/photo-1578749553244-9311488c9df4?w=800&h=1000&fit=crop",
-            "https://images.unsplash.com/photo-1584346133934-a3afd2a33c4c?w=400&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1590736952143-6c8a77755712?w=400&h=400&fit=crop",
-            "https://images.unsplash.com/photo-1582531362002-3114532b260e?w=400&h=400&fit=crop"
-        ],
-        vendor: {
-            name: "L'Artisan du Faso",
-            id: 1
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                const [res, socialRes] = await Promise.all([
+                    productService.getById(id),
+                    relationService.getProductSocialProof(id)
+                ]);
+                
+                setProduct(res.data);
+                setSocialProof(socialRes.data.socialProof);
+                
+                // Fetch related products
+                const relatedRes = await productService.getAll({ 
+                    category: res.data.category,
+                    limit: 4 
+                });
+                setRelatedProducts(relatedRes.data.data.filter(p => p._id !== id));
+            } catch (err) {
+                console.error('Erreur chargement produit:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProduct();
+        window.scrollTo(0, 0);
+    }, [id]);
+
+    const handleAddToCart = async () => {
+        if (!authService.isLoggedIn()) {
+            navigate('/login');
+            return;
+        }
+        setAddingToCart(true);
+        try {
+            await addToCart(id, quantity, product);
+            showToast('Produit ajouté au panier !', 'success');
+        } catch (err) {
+            console.error('Erreur ajout panier:', err);
+            showToast('Erreur lors de l\'ajout au panier', 'error');
+        } finally {
+            setAddingToCart(false);
         }
     };
 
-    const similarProducts = [
-        { id: 101, name: "Statue Senufo sculptée", price: "25.000 FCFA", rating: 4.8, img: "https://images.unsplash.com/photo-1596751303335-74f350360ec9?w=400&h=500&fit=crop" },
-        { id: 102, name: "Bol en paille tressée", price: "5.500 FCFA", rating: 4.2, img: "https://images.unsplash.com/photo-1621360341396-85617ce3daab?w=400&h=500&fit=crop" },
-        { id: 103, name: "Coupelle en terre cuite", price: "3.200 FCFA", rating: 4.5, img: "https://images.unsplash.com/photo-1512418490979-92798ccc13b0?w=400&h=500&fit=crop" },
-        { id: 104, name: "Masque artisanal Bwa", price: "45.000 FCFA", rating: 4.9, img: "https://images.unsplash.com/photo-1590005354167-6da97870fa1c?w=400&h=500&fit=crop" }
-    ];
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-white">
+                <Loader2 className="w-12 h-12 text-[#16c44f] animate-spin" />
+            </div>
+        );
+    }
+
+    if (!product) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 text-center">
+                <h2 className="text-2xl font-black text-gray-900 mb-4 uppercase tracking-tighter">Produit introuvable</h2>
+                <Link to="/products" className="text-[#16c44f] font-bold hover:underline">Retour à la boutique</Link>
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-[#fcfdfc]">
-            {/* Header (Matching Reference Image) */}
-            <header className="bg-white border-b border-gray-100 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-20 gap-8">
-                        {/* Logo */}
-                        <Link to="/" className="flex items-center gap-2 shrink-0">
-                            <div className="w-8 h-8 bg-[#17cf54] rounded-lg flex items-center justify-center p-1.5 shadow-lg shadow-[#17cf54]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
+        <div className="min-h-screen bg-white font-sans text-gray-900">
+            {/* Header / Navigation Simple */}
+            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 py-4 px-4 sm:px-6 lg:px-8">
+                <div className="max-w-7xl mx-auto flex justify-between items-center">
+                    <Link to="/" className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-[#16c44f] rounded-lg flex items-center justify-center p-1.5 shadow-lg shadow-[#16c44f]/20">
+                            <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L2 7L12 12L22 7L12 2Z" />
+                                <path d="M2 17L12 22L22 17" />
+                                <path d="M2 12L12 17L22 12" />
+                            </svg>
+                        </div>
+                        <span className="text-xl font-black tracking-tight hidden sm:block">FasoMarket</span>
+                    </Link>
+
+                    <div className="flex items-center gap-4">
+                        <Link to="/cart" className="relative p-1 text-gray-700 hover:text-[#17cf54] transition-colors group">
+                            <ShoppingBag size={20} strokeWidth={2.5} className="group-hover:scale-110 transition-transform" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 bg-[#17cf54] text-white text-[9px] font-black w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                                    {cartCount}
+                                </span>
+                            )}
                         </Link>
-
-                        {/* Search Bar */}
-                        <div className="flex-1 max-w-sm relative hidden md:block">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={16} />
-                            <input
-                                type="text"
-                                placeholder="Rechercher un produit artisanal..."
-                                className="w-full pl-10 pr-4 py-2 bg-[#f2fdf6] border-none rounded-lg focus:ring-2 focus:ring-[#17cf54]/20 outline-none transition-all text-xs font-medium placeholder:text-gray-400"
-                            />
-                        </div>
-
-                        {/* Navigation */}
-                        <nav className="hidden lg:flex items-center gap-6 text-[13px] font-bold text-gray-700">
-                            <Link to="/" className="hover:text-[#17cf54]">Accueil</Link>
-                            <Link to="/" className="hover:text-[#17cf54]">Boutique</Link>
-                            <Link to="/" className="text-[#17cf54]">Artisanat</Link>
-                            <Link to="/" className="hover:text-[#17cf54]">Mode</Link>
-                            <Link to="/" className="hover:text-[#17cf54]">Contact</Link>
-                        </nav>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-5">
-                            <Link to="/cart" className="relative p-1 text-gray-700 hover:text-[#17cf54] transition-colors">
-                                <ShoppingBag size={20} strokeWidth={2.5} />
-                                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-[#17cf54] text-white text-[9px] font-black rounded-full flex items-center justify-center ring-2 ring-white">2</span>
+                        {authService.isLoggedIn() ? (
+                            <Link to="/profile" className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
+                                <img src={authService.getUser()?.avatar || `https://ui-avatars.com/api/?name=${authService.getUser()?.name}&background=f3f4f6`} className="w-full h-full object-cover" alt="" />
                             </Link>
-                            <Link to="/account" className="text-gray-700 hover:text-[#17cf54]">
-                                <User size={20} strokeWidth={2.5} />
-                            </Link>
-                            <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-orange-100">
-                                <img src="https://ui-avatars.com/api/?name=User&background=ffedd5&color=9a3412" alt="Profile" className="w-full h-full object-cover" />
-                            </div>
-                        </div>
+                        ) : (
+                            <Link to="/login" className="text-sm font-bold text-gray-900 hover:text-[#16c44f]">Connexion</Link>
+                        )}
                     </div>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                
-                {/* Breadcrumbs */}
-                <nav className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-8">
-                    <Link to="/" className="hover:text-[#17cf54]">Accueil</Link>
-                    <ChevronRight size={12} strokeWidth={3} />
-                    <Link to="/" className="hover:text-[#17cf54]">Artisanat</Link>
-                    <ChevronRight size={12} strokeWidth={3} />
-                    <span className="text-gray-600 truncate">{product.name}</span>
-                </nav>
-
-                <div className="flex flex-col lg:row lg:flex-row gap-12 lg:gap-20 mb-24">
-                    
-                    {/* Gallery Section */}
-                    <div className="lg:flex-1 space-y-4">
-                        <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-100 shadow-sm">
-                            <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-cover" />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                <div className="flex flex-col lg:flex-row gap-16">
+                    {/* Left: Gallery */}
+                    <div className="flex-1 space-y-6">
+                        <div className="aspect-[4/5] rounded-[3rem] overflow-hidden bg-gray-50 border border-gray-100 relative group">
+                            <img 
+                                src={product.images?.[activeImage] || product.image} 
+                                alt={product.name} 
+                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                            {product.stock <= 5 && product.stock > 0 && (
+                                <div className="absolute top-6 left-6 bg-red-500 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
+                                    Plus que {product.stock} en stock
+                                </div>
+                            )}
+                            {product.stock === 0 && (
+                                <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+                                    <span className="bg-gray-900 text-white px-8 py-4 rounded-full font-black uppercase tracking-widest text-sm">Épuisé</span>
+                                </div>
+                            )}
                         </div>
-                        <div className="grid grid-cols-4 gap-4">
-                            {product.images.map((img, idx) => (
-                                <button 
-                                    key={idx} 
-                                    onClick={() => setActiveImage(idx)}
-                                    className={`aspect-square rounded-2xl overflow-hidden border-4 transition-all ${idx === activeImage ? 'border-[#17cf54]' : 'border-white bg-gray-50'}`}
-                                >
-                                    <img src={img} alt={`${product.name} ${idx}`} className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                            <div className="aspect-square rounded-2xl bg-[#f2fdf6] border-4 border-white flex items-center justify-center text-[#17cf54] hover:bg-[#e8faee] transition-colors cursor-pointer">
-                                <Camera size={24} />
-                            </div>
-                        </div>
-                    </div>
 
-                    {/* Info Section */}
-                    <div className="lg:flex-1 py-4">
-                        <span className="px-3 py-1 bg-[#f2fdf6] text-[#17cf54] text-[10px] font-black rounded-lg border border-[#e8faee] tracking-widest mb-4 inline-block">
-                            {product.category}
-                        </span>
-                        
-                        <h1 className="text-4xl lg:text-5xl font-black text-gray-900 mb-4">{product.name}</h1>
-                        
-                        <div className="flex items-center gap-2 mb-8">
-                            <div className="flex text-yellow-400">
-                                {[...Array(5)].map((_, i) => (
-                                    <Star key={i} size={16} fill={i < 4 ? "currentColor" : "none"} strokeWidth={i < 4 ? 0 : 3} />
+                        {/* Thumbnails */}
+                        {(product.images?.length > 1) && (
+                            <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+                                {product.images.map((img, idx) => (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => setActiveImage(idx)}
+                                        className={`w-24 h-24 rounded-2xl overflow-hidden border-2 transition-all shrink-0 ${activeImage === idx ? 'border-[#16c44f] p-1' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                    >
+                                        <img src={img} className="w-full h-full object-cover rounded-xl" alt="" />
+                                    </button>
                                 ))}
                             </div>
-                            <span className="text-xs font-bold text-gray-400">({product.reviewsCount} avis vérifiés)</span>
+                        )}
+                    </div>
+
+                    {/* Right: Info */}
+                    <div className="flex-1 space-y-10">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <span className="px-4 py-1.5 bg-[#16c44f]/10 text-[#16c44f] rounded-full text-[10px] font-black uppercase tracking-widest">
+                                    {product.category}
+                                </span>
+                                <div className="flex items-center gap-1 text-yellow-400">
+                                    <Star size={14} fill="currentColor" />
+                                    <span className="text-xs font-black text-gray-900">{socialProof?.avgRating || 0}</span>
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">({socialProof?.totalReviews || 0} avis)</span>
+                                </div>
+                            </div>
+                            <h1 className="text-5xl lg:text-6xl font-black text-gray-900 tracking-tighter italic leading-none">{product.name}</h1>
+                            
+                            {/* Social Proof Tags */}
+                            <div className="flex flex-wrap gap-3 mt-6">
+                                <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100 shadow-sm">
+                                    <Eye size={12} className="text-[#16c44f]" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                        <span className="text-[#16c44f]">{viewersCount}</span> personnes regardent
+                                    </span>
+                                </div>
+                                {socialProof?.totalBuyers > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100 shadow-sm">
+                                        <Zap size={12} className="text-amber-500" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            Succès : <span className="text-amber-500">{socialProof.totalBuyers}</span> ventes
+                                        </span>
+                                    </div>
+                                )}
+                                {socialProof?.wishlistCount > 0 && (
+                                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-full border border-gray-100 shadow-sm">
+                                        <Heart size={12} className="text-red-500" />
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                            Favori de <span className="text-red-500">{socialProof.wishlistCount}</span> personnes
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-baseline gap-4 mt-6">
+                                <span className="text-4xl font-black text-gray-900">{product.price.toLocaleString()} <span className="text-sm">FCFA</span></span>
+                            </div>
                         </div>
 
-                        <div className="flex items-baseline gap-2 mb-8">
-                            <span className="text-4xl font-black text-[#17cf54]">{product.price}</span>
-                            <span className="text-xl font-black text-[#17cf54]">{product.currency}</span>
-                        </div>
-
-                        <p className="text-gray-500 leading-relaxed font-medium mb-10 max-w-xl">
+                        <p className="text-lg text-gray-500 font-medium leading-relaxed max-w-xl">
                             {product.description}
                         </p>
 
-                        <div className="bg-[#fcfdfc] border border-gray-100 rounded-[2rem] p-6 mb-8 flex flex-col sm:flex-row items-center gap-8">
-                            <div className="flex flex-col gap-2">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Quantité</span>
-                                <div className="flex items-center bg-white rounded-xl p-1 border border-gray-100 shadow-sm h-12 w-32 justify-between">
-                                    <button 
-                                        onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                                        className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"
-                                    >
-                                        <Minus size={18} strokeWidth={3} />
-                                    </button>
-                                    <span className="font-black text-gray-900">{quantity}</span>
-                                    <button 
-                                        onClick={() => setQuantity(q => q + 1)}
-                                        className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors"
-                                    >
-                                        <Plus size={18} strokeWidth={3} />
-                                    </button>
+                        {/* Store Info Mini */}
+                        <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 flex items-center justify-between group cursor-pointer hover:bg-[#16c44f]/5 transition-all">
+                            <div className="flex items-center gap-5">
+                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center font-black text-primary border border-gray-100 shadow-sm overflow-hidden">
+                                     <img src={product.store?.logo || `https://ui-avatars.com/api/?name=${product.store?.name || 'Store'}&background=fff&color=16c44f`} className="w-full h-full object-cover" alt="" />
+                                </div>
+                                <div className="text-left">
+                                    <h4 className="font-black text-gray-900 uppercase tracking-tight group-hover:text-primary transition-colors">{product.store?.name || 'Boutique Partenaire'}</h4>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Voir la boutique</p>
                                 </div>
                             </div>
-                            <button className="flex-1 w-full sm:w-auto h-14 bg-[#17cf54] text-white rounded-2xl font-black text-base shadow-xl shadow-[#17cf54]/20 hover:bg-[#12a643] transition-all flex items-center justify-center gap-3 active:scale-95">
-                                <ShoppingBag size={20} />
-                                Ajouter au panier
-                            </button>
+                            <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-gray-400 group-hover:text-primary group-hover:translate-x-1 transition-all">
+                                <ChevronRight size={20} />
+                            </div>
                         </div>
 
-                        {/* Vendor Card */}
-                        <div className="bg-white border border-gray-100 rounded-2xl p-4 flex items-center justify-between group cursor-pointer hover:border-[#17cf54]/30 transition-all">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-[#f2fdf6] rounded-xl flex items-center justify-center text-[#17cf54]">
-                                    <Store size={24} />
+                        {/* Actions */}
+                        <div className="space-y-6 pt-4">
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <div className="flex items-center bg-gray-100 rounded-2xl p-1 h-[72px]">
+                                    <button 
+                                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                        className="w-16 h-full flex items-center justify-center hover:bg-white rounded-xl transition-all"
+                                    >
+                                        <Minus size={20} />
+                                    </button>
+                                    <span className="w-16 text-center font-black text-xl">{quantity}</span>
+                                    <button 
+                                        onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                                        className="w-16 h-full flex items-center justify-center hover:bg-white rounded-xl transition-all"
+                                    >
+                                        <Plus size={20} />
+                                    </button>
                                 </div>
-                                <div className="space-y-0.5">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Vendu par :</p>
-                                    <h4 className="font-black text-gray-900">{product.vendor.name}</h4>
+
+                                <button 
+                                    onClick={handleAddToCart}
+                                    disabled={addingToCart || product.stock === 0}
+                                    className="flex-1 bg-gray-900 text-white rounded-[2rem] font-black text-lg flex items-center justify-center gap-3 transition-all hover:bg-gray-800 hover:-translate-y-1 active:scale-95 disabled:bg-gray-200 disabled:pointer-events-none group px-10 h-[72px]"
+                                >
+                                    {addingToCart ? (
+                                        <Loader2 className="animate-spin" size={24} />
+                                    ) : (
+                                        <>
+                                            <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
+                                            Ajouter au panier
+                                        </>
+                                    )}
+                                </button>
+
+                                <button className="w-[72px] h-[72px] bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-[2rem] flex items-center justify-center transition-all">
+                                    <Heart size={24} />
+                                </button>
+                            </div>
+
+                            {/* Trust signals */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 border-t border-gray-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#16c44f]">
+                                        <Truck size={20} />
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Livraison <br /><span className="text-gray-900">Express</span></div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#16c44f]">
+                                        <RotateCcw size={20} />
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Retour <br /><span className="text-gray-900">sous 7j</span></div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-[#16c44f]">
+                                        <ShieldCheck size={20} />
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-gray-400">Artisanat <br /><span className="text-gray-900">Certifié</span></div>
                                 </div>
                             </div>
-                            <Link to={`/shop/${product.vendor.id}`} className="text-[#17cf54] text-xs font-black flex items-center gap-1.5 hover:translate-x-1 transition-transform">
-                                Voir la boutique <ArrowRight size={14} strokeWidth={3} />
-                            </Link>
                         </div>
                     </div>
                 </div>
 
-                {/* Similar Products */}
-                <section className="space-y-10">
-                    <div className="flex justify-between items-end">
-                        <h2 className="text-3xl font-black text-gray-900 italic">Produits similaires</h2>
-                        <Link to="/products" className="text-[#17cf54] text-sm font-black flex items-center gap-2 hover:translate-x-1 transition-transform">
-                            Tout voir <ArrowRight size={18} strokeWidth={3} />
-                        </Link>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {similarProducts.map((p) => (
-                            <div key={p.id} className="group bg-white rounded-3xl overflow-hidden border border-gray-50 shadow-sm hover:shadow-xl hover:shadow-gray-200/40 transition-all">
-                                <div className="aspect-[4/5] relative overflow-hidden bg-gray-100">
-                                    <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                    <button className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-all shadow-sm">
-                                        <Heart size={18} strokeWidth={2.5} />
-                                    </button>
-                                </div>
-                                <div className="p-6 space-y-3">
-                                    <h3 className="font-bold text-gray-900 truncate">{p.name}</h3>
-                                    <div className="flex justify-between items-center">
-                                        <p className="text-[#17cf54] font-black">{p.price}</p>
-                                        <div className="flex items-center gap-1 text-[10px] font-black text-yellow-500">
-                                            <span>★</span>
-                                            <span className="text-gray-400">{p.rating}</span>
+                {/* Related Products */}
+                {relatedProducts.length > 0 && (
+                    <section className="mt-40 space-y-12">
+                        <div className="flex justify-between items-end">
+                            <h2 className="text-4xl font-black text-gray-900 tracking-tighter italic capitalize">Vous aimerez aussi</h2>
+                            <Link to="/products" className="flex items-center gap-2 text-primary font-black uppercase text-xs tracking-widest hover:translate-x-1 transition-transform">
+                                Voir tout <ArrowRight size={16} />
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                            {relatedProducts.map((p) => (
+                                <Link key={p._id} to={`/product/${p._id}`} className="group space-y-4">
+                                    <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden bg-gray-50 border border-gray-100 relative">
+                                        <img src={p.images?.[0] || p.image} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={p.name} />
+                                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                            {p.price.toLocaleString()} FCFA
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
+                                    <div>
+                                        <h4 className="font-black text-gray-900 uppercase tracking-tight text-sm truncate">{p.name}</h4>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{p.category}</p>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
             </main>
 
-            {/* Footer */}
-            <footer className="bg-[#111827] text-white pt-20 pb-12 mt-20">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 bg-[#17cf54] rounded-lg"></div>
-                                <span className="text-xl font-black">FasoMarket</span>
-                            </div>
-                            <p className="text-sm text-gray-400 font-medium leading-relaxed">
-                                Votre passerelle vers l'excellence de l'artisanat et des produits du Burkina Faso. Soutenez les créateurs locaux.
-                            </p>
-                            <div className="flex gap-4 grayscale opacity-60">
-                                <div className="w-8 h-8 bg-gray-800 rounded-lg"></div>
-                                <div className="w-8 h-8 bg-gray-800 rounded-lg"></div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6">
-                            <h4 className="font-black text-sm uppercase tracking-widest">Navigation</h4>
-                            <nav className="flex flex-col gap-3 text-sm font-medium text-gray-400">
-                                <Link to="/" className="hover:text-white transition-colors">Boutique</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Artisanat</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Mode & Textile</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Nos Artisans</Link>
-                            </nav>
-                        </div>
-
-                        <div className="space-y-6">
-                            <h4 className="font-black text-sm uppercase tracking-widest">Assistance</h4>
-                            <nav className="flex flex-col gap-3 text-sm font-medium text-gray-400">
-                                <Link to="/" className="hover:text-white transition-colors">Centre d'aide</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Livraison & Retours</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Paiement Sécurisé</Link>
-                                <Link to="/" className="hover:text-white transition-colors">Nous contacter</Link>
-                            </nav>
-                        </div>
-
-                        <div className="space-y-6">
-                            <h4 className="font-black text-sm uppercase tracking-widest">Newsletter</h4>
-                            <p className="text-sm text-gray-400 font-medium">Recevez nos dernières pépites artisanales directement dans votre boîte mail.</p>
-                            <div className="flex gap-2">
-                                <input 
-                                    type="email" 
-                                    placeholder="Votre email" 
-                                    className="flex-1 px-4 py-3 bg-white/5 border-none rounded-xl text-sm font-medium focus:ring-1 focus:ring-[#17cf54] outline-none"
-                                />
-                                <button className="p-3 bg-[#17cf54] text-white rounded-xl hover:bg-[#12a643] transition-all">
-                                    <ArrowRight size={20} strokeWidth={3} />
-                                </button>
-                            </div>
-                        </div>
+            <footer className="mt-40 py-20 bg-gray-50 border-t border-gray-100">
+                <div className="max-w-7xl mx-auto px-4 text-center space-y-8">
+                    <div className="flex justify-center items-center gap-2">
+                        <div className="w-8 h-8 bg-[#16c44f] rounded-lg"></div>
+                        <span className="text-xl font-black tracking-tight">FasoMarket</span>
                     </div>
-                    
-                    <div className="pt-8 border-t border-white/5 flex flex-col md:row items-center justify-between gap-6 text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em]">
-                        <p>© 2024 FASOMARKET. FAIT AVEC PASSION POUR LE BURKINA FASO.</p>
-                        <div className="flex gap-8">
-                            <Link to="/" className="hover:text-white">Terms</Link>
-                            <Link to="/" className="hover:text-white">Privacy</Link>
-                            <Link to="/" className="hover:text-white">Contact</Link>
-                        </div>
-                    </div>
+                    <p className="text-gray-400 font-bold uppercase tracking-[0.3em] text-[10px]">L'excellence Burkinabè à votre portée</p>
                 </div>
             </footer>
         </div>

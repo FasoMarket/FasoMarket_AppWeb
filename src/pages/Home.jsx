@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     Search,
     ShoppingCart,
-    User,
+    User as UserIcon,
     ChevronRight,
     Truck,
     ShieldCheck,
@@ -10,16 +11,100 @@ import {
     Palette,
     Utensils,
     Shirt,
-    Cpu
+    Cpu,
+    Loader2,
+    Mail,
+    TrendingUp,
+    BarChart2
 } from 'lucide-react';
+import { productService } from '../services/productService';
+import { storeService }   from '../services/storeService';
+import { authService }    from '../services/authService';
+import NotificationBell from '../components/NotificationBell';
+import { useCart }        from '../contexts/CartContext';
+import { relationService } from '../services/relationService';
 
 // Assets
 import heroHome from '../assets/hero-home.png';
-import pagneFasso from '../assets/pagne-fasso.png';
-import beurreKarite from '../assets/beurre-karite.png';
-import bronzeArt from '../assets/bronze-art.png';
 
 export default function Home() {
+    const navigate = useNavigate();
+    const { cartCount, addToCart, loading: cartLoading } = useCart();
+    const [featuredProducts, setFeaturedProducts] = useState([]);
+    const [trendingProducts, setTrendingProducts] = useState([]);
+    const [featuredStores, setFeaturedStores] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [addingToCart, setAddingToCart] = useState(null);
+    const user = authService.getUser();
+
+    useEffect(() => {
+        const loadHomeData = async () => {
+            setLoading(true);
+            try {
+                // Redirect admins and vendors to their dashboards
+                if (user?.role === 'admin') {
+                    navigate('/admin');
+                    return;
+                }
+                if (user?.role === 'vendor') {
+                    navigate('/vendor');
+                    return;
+                }
+
+                const [productsRes, trendingRes, storesRes, categoriesRes] = await Promise.all([
+                    productService.getAll({ limit: 8, sort: '-createdAt' }),
+                    relationService.getTrendingProducts(),
+                    storeService.getAll({ limit: 6 }),
+                    productService.getCategories(),
+                ]);
+                
+                setFeaturedProducts(productsRes.data?.data || []);
+                setTrendingProducts(trendingRes.data?.trending || []);
+                setFeaturedStores(storesRes.data?.data || []);
+                setCategories(categoriesRes.data?.data || []);
+            } catch (err) {
+                console.error('Erreur chargement home:', err);
+                // Ensure states are arrays even on error
+                setFeaturedProducts([]);
+                setFeaturedStores([]);
+                setCategories([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadHomeData();
+    }, []);
+
+    const handleSearch = (e) => {
+        if (e.key === 'Enter' && searchQuery.trim()) {
+            navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
+        }
+    };
+
+    const handleAddToCart = async (e, productId) => {
+        e.preventDefault(); // Prevent navigating to detail page if wrapped in Link
+        setAddingToCart(productId);
+        try {
+            await addToCart(productId, 1);
+        } catch (err) {
+            console.error('Erreur ajout panier:', err);
+            if (err.response?.status === 401) navigate('/login');
+        } finally {
+            setAddingToCart(null);
+        }
+    };
+
+    const getCategoryIcon = (catName) => {
+        if (!catName || typeof catName !== 'string') return Cpu;
+        const lower = catName.toLowerCase();
+        if (lower.includes('artis') || lower.includes('palette')) return Palette;
+        if (lower.includes('alim') || lower.includes('manger')) return Utensils;
+        if (lower.includes('mode') || lower.includes('vetement')) return Shirt;
+        return Cpu;
+    };
+
     return (
         <div className="min-h-screen bg-white">
             {/* Header */}
@@ -27,7 +112,7 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20 gap-8">
                         {/* Logo */}
-                        <div className="flex items-center gap-2 shrink-0">
+                        <Link to="/" className="flex items-center gap-2 shrink-0">
                             <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
                                 <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M12 2L2 7L12 12L22 7L12 2Z" />
@@ -36,11 +121,11 @@ export default function Home() {
                                 </svg>
                             </div>
                             <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-                        </div>
+                        </Link>
 
-                        <nav className="hidden lg:flex items-center gap-6 text-sm font-bold text-gray-600">
-                            <Link to="/" className="text-gray-900">Boutiques</Link>
-                            <Link to="/vendor/register" className="hover:text-gray-900 transition-colors">Devenir Vendeur</Link>
+                        <nav className="hidden lg:flex items-center gap-12 text-sm font-bold text-gray-600">
+                            <Link to="/stores" className="hover:text-[#17cf54] transition-colors">Boutiques</Link>
+                            <Link to="/register-vendor" className="hover:text-[#17cf54] transition-colors">Devenir Vendeur</Link>
                         </nav>
 
                         {/* Search Bar */}
@@ -48,27 +133,43 @@ export default function Home() {
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input
                                 type="text"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onKeyDown={handleSearch}
                                 placeholder="Rechercher des produits, artisans, boutiques..."
                                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
                             />
                         </div>
 
                         <div className="flex items-center gap-4">
-                            <Link to="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                <ShoppingCart size={22} />
-                                <span className="absolute top-1 right-1 w-4 h-4 bg-[#17cf54] text-white text-[10px] font-bold rounded-full flex items-center justify-center">0</span>
+                            <Link to="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors group">
+                                <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in shadow-lg">
+                                        {cartCount}
+                                    </span>
+                                )}
                             </Link>
-                            <Link
-                                to="/login"
-                                className="px-6 py-3 bg-[#17cf54] text-white rounded-2xl text-sm font-bold hover:bg-[#12a643] transition-all shadow-lg shadow-[#17cf54]/20 active:scale-95"
-                            >
-                                Connexion
-                            </Link>
-                            <Link to="/login" className="p-1 bg-gray-100 rounded-full border-2 border-white shadow-sm overflow-hidden hidden sm:block">
-                                <div className="w-8 h-8 bg-gray-300 flex items-center justify-center">
-                                    <User size={20} className="text-gray-500" />
-                                </div>
-                            </Link>
+                            
+                            {user && (
+                                <NotificationBell />
+                            )}
+                            
+                            {user ? (
+                                <Link to={user.role === 'admin' ? '/admin' : user.role === 'vendor' ? '/vendor' : '/profile'} className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 hover:bg-white transition-all group">
+                                    <div className="w-8 h-8 bg-[#17cf54] rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform">
+                                        {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-full" /> : <UserIcon size={18} />}
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-700 hidden lg:block">{user.name?.split(' ')[0] || 'Profil'}</span>
+                                </Link>
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    className="px-6 py-3 bg-[#17cf54] text-white rounded-2xl text-sm font-bold hover:bg-[#12a643] transition-all shadow-lg shadow-[#17cf54]/20"
+                                >
+                                    Connexion
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -77,7 +178,7 @@ export default function Home() {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-20">
 
                 {/* Hero Section */}
-                <section className="bg-[#e8faee] rounded-[3rem] overflow-hidden flex flex-col lg:flex-row relative">
+                <section className="bg-[#e8faee] rounded-[3rem] overflow-hidden flex flex-col lg:flex-row relative min-h-[500px]">
                     <div className="flex-1 p-12 lg:p-20 space-y-8 self-center relative z-10">
                         <div className="inline-flex items-center gap-2 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/50">
                             <span className="flex w-2 h-2 rounded-full bg-[#17cf54] animate-pulse"></span>
@@ -89,22 +190,19 @@ export default function Home() {
                             votre porte.
                         </h1>
                         <p className="text-lg text-gray-600 font-medium max-w-sm leading-relaxed">
-                            Soutenez l'économie locale. Découvrez une sélection unique d'artisanat, de mode Faso Danfani et de produits du terroir soigneusement sélectionnés.
+                            Soutenez l'économie locale. Découvrez une sélection unique d'artisanat, de mode Faso Danfani et de produits du terroir.
                         </p>
                         <div className="flex flex-wrap gap-4">
                             <Link to="/products" className="px-8 py-4 bg-[#17cf54] text-white rounded-2xl font-bold hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 hover:-translate-y-1 inline-block">
                                 Explorer le Marché
                             </Link>
-                            <button className="px-8 py-4 bg-white text-gray-900 border border-gray-100 rounded-2xl font-bold hover:bg-gray-50 transition-all shadow-lg shadow-gray-200/50">
-                                En savoir plus
-                            </button>
                         </div>
                     </div>
-                    <div className="flex-1 h-[400px] lg:h-auto overflow-hidden">
+                    <div className="flex-1 relative overflow-hidden hidden lg:block">
                         <img
                             src={heroHome}
                             alt="Artisane Burkinabè"
-                            className="w-full h-full object-cover object-center"
+                            className="absolute inset-0 w-full h-full object-cover object-center"
                         />
                     </div>
                 </section>
@@ -116,31 +214,32 @@ export default function Home() {
                             <h2 className="text-3xl font-black text-gray-900">Explorer par Catégories</h2>
                             <p className="text-gray-500 font-medium tracking-tight">Trouvez exactement ce que vous cherchez parmi nos univers</p>
                         </div>
-                        <Link to="/categories" className="flex items-center gap-2 text-[#17cf54] font-black hover:translate-x-1 transition-transform">
-                            Voir tout <ChevronRight size={20} />
-                        </Link>
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        {[
-                            { name: 'Artisanat', icon: Palette, color: 'bg-green-50', iconColor: 'text-[#17cf54]', count: '1.2k+ Produits' },
-                            { name: 'Aliments', icon: Utensils, color: 'bg-orange-50', iconColor: 'text-orange-500', count: '500 Produits' },
-                            { name: 'Mode', icon: Shirt, color: 'bg-blue-50', iconColor: 'text-blue-500', count: 'Faso Danfani' },
-                            { name: 'Électronique', icon: Cpu, color: 'bg-purple-50', iconColor: 'text-purple-500', count: 'High-Tech' }
-                        ].map((cat) => (
-                            <div key={cat.name} className={`${cat.color} p-8 rounded-[2.5rem] border border-white space-y-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all cursor-pointer group text-center`}>
-                                <div className={`w-14 h-14 mx-auto ${cat.iconColor} bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
-                                    {(() => {
-                                        const Icon = cat.icon;
-                                        return <Icon size={28} />;
-                                    })()}
-                                </div>
-                                <div>
-                                    <h3 className="text-lg font-bold text-gray-900">{cat.name}</h3>
-                                    <p className="text-xs text-gray-400 font-bold mt-1 tracking-wider uppercase">{cat.count}</p>
-                                </div>
-                            </div>
-                        ))}
+                        {loading ? (
+                            Array(4).fill(0).map((_, i) => (
+                                <div key={i} className="bg-gray-50 h-48 rounded-[2.5rem] animate-pulse"></div>
+                            ))
+                        ) : (
+                            categories.map((cat) => {
+                                const Icon = getCategoryIcon(cat.name || cat);
+                                return (
+                                    <Link 
+                                        to={`/products?category=${encodeURIComponent(cat.name || cat)}`} 
+                                        key={cat.id || (cat.name || cat)} 
+                                        className="bg-white p-8 rounded-[2.5rem] border border-gray-100 space-y-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all cursor-pointer group text-center"
+                                    >
+                                        <div className="w-14 h-14 mx-auto text-[#17cf54] bg-[#e8faee] rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                            <Icon size={28} />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-900">{cat.name || cat}</h3>
+                                        </div>
+                                    </Link>
+                                );
+                            })
+                        )}
                     </div>
                 </section>
 
@@ -148,82 +247,82 @@ export default function Home() {
                 <section className="space-y-8">
                     <div className="flex justify-between items-end">
                         <div className="space-y-2">
-                            <h2 className="text-3xl font-black text-gray-900">Produits Vedettes</h2>
+                            <h2 className="text-3xl font-black text-gray-900">Produits Récents</h2>
                             <p className="text-gray-500 font-medium tracking-tight">Les pépites du moment sélectionnées pour vous</p>
                         </div>
-                        <Link to="/products" className="flex items-center gap-2 text-[#17cf54] font-black hover:translate-x-1 transition-transform">
+                        <Link to="/products?sort=-createdAt" className="flex items-center gap-2 text-[#17cf54] font-black hover:translate-x-1 transition-transform">
                             Voir tout <ChevronRight size={20} />
                         </Link>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {[
-                            { id: 1, name: 'Pagne Faso Danfani', cat: 'Mode & Textile', price: '15 000 FCFA', img: pagneFasso, rating: '4.9 (124)' },
-                            { id: 2, name: 'Beurre de Karité Pur', cat: 'Cosmétique', price: '3 500 FCFA', img: beurreKarite, rating: '4.8 (87)', badge: 'BIO' },
-                            { id: 3, name: 'Cavalier en Bronze', cat: 'Artisanat d\'Art', price: '25 000 FCFA', img: bronzeArt, rating: '5.0 (42)' },
-                            { id: 4, name: 'Sac en Cuir Artisanal', cat: 'Maroquinerie', price: '9 500 FCFA', img: pagneFasso, rating: '4.7 (56)', badge: 'PROMO' } // Using placeholder img for sac
-                        ].map((item) => (
-                            <Link to={`/product/${item.id}`} key={item.id} className="group cursor-pointer space-y-4 block">
-                                <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100 relative">
-                                    <img src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                    {item.badge && (
-                                        <div className="absolute top-4 left-4 bg-[#17cf54] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                                            {item.badge}
-                                        </div>
-                                    )}
-                                    <button className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl text-[#17cf54] shadow-lg hover:bg-[#17cf54] hover:text-white transition-all">
-                                        <ShoppingCart size={20} />
-                                    </button>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-[#17cf54] uppercase tracking-widest">{item.cat}</p>
-                                    <h3 className="font-bold text-gray-900 truncate">{item.name}</h3>
-                                    <div className="flex items-center gap-1 mt-1 text-xs text-yellow-500 font-bold">
-                                        <span>★</span>
-                                        <span className="text-gray-400">{item.rating}</span>
+                        {loading ? (
+                            Array(4).fill(0).map((_, i) => (
+                                <div key={i} className="bg-gray-50 h-64 rounded-3xl animate-pulse"></div>
+                            ))
+                        ) : featuredProducts.length > 0 ? (
+                            featuredProducts.map((item) => (
+                                <Link to={`/product/${item._id}`} key={item._id} className="group cursor-pointer space-y-4 block">
+                                    <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100 relative">
+                                        <img src={item.images?.[0] || item.image || item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        <button 
+                                            onClick={(e) => handleAddToCart(e, item._id)}
+                                            disabled={addingToCart === item._id}
+                                            className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl text-[#17cf54] shadow-lg hover:bg-[#17cf54] hover:text-white transition-all disabled:opacity-75"
+                                        >
+                                            {addingToCart === item._id ? <Loader2 size={20} className="animate-spin" /> : <ShoppingCart size={20} />}
+                                        </button>
                                     </div>
-                                    <p className="text-lg font-black text-gray-900 mt-2">{item.price}</p>
-                                </div>
-                            </Link>
-                        ))}
+                                    <div>
+                                        <p className="text-[10px] font-bold text-[#17cf54] uppercase tracking-widest leading-none mb-1">{item.category}</p>
+                                        <h3 className="font-bold text-gray-900 truncate">{item.name}</h3>
+                                        <p className="text-lg font-black text-gray-900 mt-2">{item.price?.toLocaleString() || '---'} FCFA</p>
+                                    </div>
+                                </Link>
+                            ))
+                        ) : (
+                            <div className="col-span-full py-12 text-center text-gray-400 font-medium italic">
+                                Aucun produit récent pour le moment.
+                            </div>
+                        )}
                     </div>
                 </section>
 
                 {/* Popular Stores */}
-                <section className="bg-[#e8faee]/50 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-20 rounded-[4rem]">
+                <section className="bg-[#e8faee]/30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-20 rounded-[4rem]">
                     <div className="space-y-12">
                         <div className="text-center space-y-2">
-                            <h2 className="text-3xl font-black text-gray-900">Boutiques Populaires</h2>
-                            <p className="text-gray-500 font-medium tracking-tight">Faites confiance à nos meilleurs vendeurs certifiés</p>
+                            <h2 className="text-3xl font-black text-gray-900">Boutiques Vedettes</h2>
+                            <p className="text-gray-500 font-medium tracking-tight">Faites confiance à nos artisans certifiés</p>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {[
-                                { name: 'Faso Tissus & Fils', rating: '4.9 (350+ ventes)', img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop' },
-                                { name: 'L\'Atelier du Bronze', rating: '5.0 (112 avis)', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop' },
-                                { name: 'Saveurs du Terroir', rating: '4.8 (210 ventes)', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop' }
-                            ].map((store) => (
-                                <div key={store.name} className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200/50 space-y-6">
-                                    <div className="flex items-center gap-4">
-                                        <img src={store.img} alt={store.name} className="w-14 h-14 rounded-2xl object-cover" />
-                                        <div>
-                                            <h3 className="font-bold text-gray-900">{store.name}</h3>
-                                            <div className="flex items-center gap-1 text-[#17cf54]">
-                                                <div className="flex text-yellow-500">★★★★★</div>
-                                                <span className="text-[10px] font-bold text-gray-400 ml-1">{store.rating}</span>
+                            {loading ? (
+                                Array(3).fill(0).map((_, i) => (
+                                    <div key={i} className="bg-white h-48 rounded-[2.5rem] animate-pulse"></div>
+                                ))
+                            ) : featuredStores.length > 0 ? (
+                                featuredStores.map((store) => (
+                                    <div key={store._id} className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200/20 space-y-6 border border-white">
+                                        <div className="flex items-center gap-4">
+                                            <img src={store.logo || store.img || 'https://placehold.co/100x100?text=Logo'} alt={store.name} className="w-14 h-14 rounded-2xl object-cover bg-gray-50" />
+                                            <div>
+                                                <h3 className="font-bold text-gray-900">{store.name}</h3>
+                                                <div className="flex items-center gap-1 text-[#17cf54]">
+                                                    <span className="text-[10px] font-bold text-gray-400">Vendeur Certifié</span>
+                                                </div>
                                             </div>
                                         </div>
+                                        <Link to={`/shop/${store.slug || store._id}`} className="w-full py-3 bg-[#e8faee] text-[#17cf54] font-bold rounded-2xl hover:bg-[#17cf54] hover:text-white transition-all text-center block">
+                                            Visiter la boutique
+                                        </Link>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="aspect-square rounded-xl bg-gray-100"></div>
-                                        <div className="aspect-square rounded-xl bg-gray-100"></div>
-                                        <div className="aspect-square rounded-xl bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-400">+12</div>
-                                    </div>
-                                    <Link to="/shop/1" className="w-full py-3 bg-[#e8faee] text-[#17cf54] font-bold rounded-2xl hover:bg-[#17cf54] hover:text-white transition-all text-center block">
-                                        Visiter la boutique
-                                    </Link>
+                                ))
+                            ) : (
+                                <div className="col-span-full text-center text-gray-400 italic font-medium">
+                                    Aucune boutique vedette pour le moment.
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
                 </section>
@@ -234,18 +333,18 @@ export default function Home() {
                         { icon: Truck, title: 'Livraison Rapide', desc: 'Livraison partout au Burkina Faso et à l\'international en un temps record.' },
                         { icon: ShieldCheck, title: 'Qualité Garantie', desc: 'Chaque produit est vérifié pour garantir son authenticité et sa qualité artisanale.' },
                         { icon: CreditCard, title: 'Paiement Sécurisé', desc: 'Payez en toute sécurité via Mobile Money (Orange, Moov) et carte bancaire.' }
-                    ].map((feature) => (
-                        <div key={feature.title} className="text-center space-y-4 px-6">
-                            <div className="w-16 h-16 mx-auto bg-[#e8faee] text-[#17cf54] rounded-full flex items-center justify-center shadow-inner">
-                                {(() => {
-                                    const Icon = feature.icon;
-                                    return <Icon size={28} />;
-                                })()}
+                    ].map((feature) => {
+                        const Icon = feature.icon;
+                        return (
+                            <div key={feature.title} className="text-center space-y-4 px-6">
+                                <div className="w-16 h-16 mx-auto bg-[#e8faee] text-[#17cf54] rounded-full flex items-center justify-center shadow-inner">
+                                    <Icon size={28} />
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900">{feature.title}</h3>
+                                <p className="text-sm text-gray-500 font-medium leading-relaxed">{feature.desc}</p>
                             </div>
-                            <h3 className="text-xl font-black text-gray-900">{feature.title}</h3>
-                            <p className="text-sm text-gray-500 font-medium leading-relaxed">{feature.desc}</p>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </section>
 
                 {/* Creator CTA */}
@@ -254,17 +353,14 @@ export default function Home() {
                     <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px]"></div>
 
                     <div className="max-w-3xl mx-auto space-y-6 relative z-10">
-                        <h2 className="text-4xl lg:text-6xl font-black text-white leading-tight">Vous êtes un créateur ?</h2>
-                        <p className="text-lg text-gray-400 font-medium">Rejoignez des milliers d'artisans burkinabè et commencez à vendre vos produits à travers le monde dès aujourd'hui.</p>
+                        <h2 className="text-4xl lg:text-6xl font-black text-white leading-tight">Vous êtes un artisan ?</h2>
+                        <p className="text-lg text-gray-400 font-medium">Rejoignez FasoMarket et commencez à vendre vos créations à travers le pays dès aujourd'hui.</p>
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-6 relative z-10">
-                        <Link to="/vendor/register" className="px-10 py-5 bg-[#17cf54] text-white rounded-2xl font-black hover:bg-[#12a643] transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95">
+                        <Link to="/register" className="px-10 py-5 bg-[#17cf54] text-white rounded-2xl font-black hover:bg-[#12a643] transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95">
                             Ouvrir ma boutique
                         </Link>
-                        <button className="px-10 py-5 bg-white/10 backdrop-blur-md text-white border border-white/10 rounded-2xl font-black hover:bg-white/20 transition-all">
-                            En savoir plus
-                        </button>
                     </div>
                 </section>
             </main>
@@ -279,52 +375,28 @@ export default function Home() {
                                 <span className="text-xl font-black text-gray-900">FasoMarket</span>
                             </div>
                             <p className="text-sm text-gray-500 font-medium leading-relaxed max-w-xs">
-                                La première marketplace dédiée à la promotion du savoir-faire Burkinabè. Connectons les talents locaux aux acheteurs du monde entier.
+                                La première marketplace dédiée à la promotion du savoir-faire Burkinabè.
                             </p>
-                            <div className="flex gap-4">
-                                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#17cf54] cursor-pointer">f</div>
-                                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#17cf54] cursor-pointer">it</div>
-                                <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 hover:text-[#17cf54] cursor-pointer">in</div>
-                            </div>
                         </div>
 
                         <div className="space-y-6">
                             <h4 className="font-black text-gray-900">Acheter</h4>
                             <nav className="flex flex-col gap-4 text-sm text-gray-500 font-medium">
-                                <Link to="/" className="hover:text-[#17cf54]">Toutes les catégories</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Boutiques certifiées</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Produits vedettes</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Livraison & Tarifs</Link>
+                                <Link to="/products" className="hover:text-[#17cf54]">Tous les produits</Link>
+                                <Link to="/stores" className="hover:text-[#17cf54]">Boutiques certifiées</Link>
                             </nav>
                         </div>
 
                         <div className="space-y-6">
                             <h4 className="font-black text-gray-900">Vendre</h4>
                             <nav className="flex flex-col gap-4 text-sm text-gray-500 font-medium">
-                                <Link to="/vendor/register" className="hover:text-[#17cf54]">Ouvrir une boutique</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Guide du vendeur</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Conditions de vente</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Commissions & Frais</Link>
-                            </nav>
-                        </div>
-
-                        <div className="space-y-6">
-                            <h4 className="font-black text-gray-900">Aide</h4>
-                            <nav className="flex flex-col gap-4 text-sm text-gray-500 font-medium">
-                                <Link to="/" className="hover:text-[#17cf54]">Support Client</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">FAQ</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Contactez-nous</Link>
-                                <Link to="/" className="hover:text-[#17cf54]">Confidentialité</Link>
+                                <Link to="/register" className="hover:text-[#17cf54]">Ouvrir une boutique</Link>
                             </nav>
                         </div>
                     </div>
 
-                    <div className="pt-8 flex flex-col md:row items-center justify-between gap-4 text-xs text-gray-400 font-medium">
+                    <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400 font-medium">
                         <p>© 2024 FasoMarket - Ensemble valorisons notre identité & nos talents.</p>
-                        <div className="flex gap-4">
-                            <span>Français (BF)</span>
-                            <span>FCFA (CFA)</span>
-                        </div>
                     </div>
                 </div>
             </footer>

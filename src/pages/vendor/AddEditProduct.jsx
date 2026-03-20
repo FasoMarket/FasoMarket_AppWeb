@@ -8,278 +8,366 @@ import {
   Image as ImageIcon,
   Tag,
   Percent,
-  Calendar
+  Calendar,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { productService } from '../../services/productService';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function AddEditProduct() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = !!id;
 
-  const [images, setImages] = useState([]);
-  const [hasPromotion, setHasPromotion] = useState(false);
-  const [discountType, setDiscountType] = useState('percentage');
+  const [loading, setLoading] = useState(isEditing);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [imageToDelete, setImageToDelete] = useState(null);
+  const { showToast } = useToast();
+  
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Alimentation',
+    category: '',
     brand: '',
     description: '',
     price: '',
     stock: ''
   });
 
-  // Simulate fetching data if editing
   useEffect(() => {
+    fetchCategories();
     if (isEditing) {
-      // Dummy data for edit mode
-      setFormData({
-        name: 'Montre Classique',
-        category: 'Accessoires',
-        brand: 'Faso Time',
-        description: 'Une superbe montre en cuir...',
-        price: '55000',
-        stock: '4'
-      });
-      setHasPromotion(true);
-      setDiscountType('fixed');
+      fetchProduct();
     }
   }, [id, isEditing]);
 
+  const fetchCategories = async () => {
+    try {
+      const res = await productService.getCategories();
+      const catData = res.data?.data || res.data || [];
+      setCategories(catData);
+      if (!isEditing && Array.isArray(catData) && catData.length > 0) {
+        setFormData(prev => ({ ...prev, category: catData[0] }));
+      }
+    } catch (err) {
+      console.error('Erreur categories:', err);
+      setCategories([]);
+    }
+  };
+
+  const fetchProduct = async () => {
+    try {
+      const res = await productService.getById(id);
+      const p = res.data?.data || res.data;
+      if (p) {
+        setFormData({
+          name: p.name || '',
+          category: p.category || '',
+          brand: p.brand || '',
+          description: p.description || '',
+          price: p.price || '',
+          stock: p.stock || ''
+        });
+        setExistingImages(p.images || []);
+      }
+    } catch (err) {
+      console.error('Erreur produit:', err);
+      setError('Impossible de charger le produit.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setSelectedFiles(prev => [...prev, ...files]);
+    
+    // Create previews
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeNewImage = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = async () => {
+    if (!imageToDelete) return;
+    try {
+      await productService.deleteImage(id, { imageUrl: imageToDelete });
+      setExistingImages(prev => prev.filter(img => img !== imageToDelete));
+      showToast('Image supprimée', 'success');
+    } catch (err) {
+      showToast('Erreur suppression image', 'error');
+    } finally {
+      setImageToDelete(null);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.price || !formData.category) {
+      setError('Veuillez remplir les champs obligatoires.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const data = new FormData();
+      data.append('name', formData.name);
+      data.append('category', formData.category);
+      data.append('brand', formData.brand);
+      data.append('description', formData.description);
+      data.append('price', formData.price);
+      data.append('stock', formData.stock);
+
+      selectedFiles.forEach(file => {
+        data.append('images', file);
+      });
+
+      if (isEditing) {
+        await productService.update(id, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+        showToast('Produit mis à jour avec succès', 'success');
+      } else {
+        await productService.create(data);
+        showToast('Produit ajouté avec succès', 'success');
+      }
+
+      navigate('/vendor/products');
+    } catch (err) {
+      console.error('Erreur sauvegarde:', err);
+      setError(err.response?.data?.message || 'Une erreur est survenue lors de la sauvegarde.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 text-black pb-20">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <button 
             onClick={() => navigate(-1)}
-            className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-slate-600 outline-none"
+            className="p-4 bg-white border border-slate-100 rounded-3xl hover:bg-slate-50 transition-all text-slate-400 hover:text-primary shadow-sm outline-none"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {isEditing ? "Modifier le Produit" : "Ajouter un Nouveau Produit"}
+            <h1 className="text-3xl font-black italic tracking-tighter text-slate-900">
+              {isEditing ? "Raffiner le Produit" : "Nouvelle Création"}
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400 mt-1">
               {isEditing 
-                ? "Mettez à jour les informations de votre produit ci-dessous." 
-                : "Remplissez les détails ci-dessous pour publier votre produit."}
+                ? "Mettez à jour votre inventaire FASOMARKET" 
+                : "Lancez votre produit sur le marché burkinabè"}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 flex items-center gap-3 font-bold animate-in fade-in zoom-in-95">
+          <AlertCircle size={20} />
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Form Column */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold border-b border-primary/5 pb-4">Informations de base</h3>
+        <div className="lg:col-span-2 space-y-8">
+          <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-10">
+            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 border-b border-gray-50 pb-6 flex items-center gap-3">
+               <Tag size={16} className="text-primary" /> Identité du Produit
+            </h3>
             
-            <div className="space-y-4">
+            <div className="space-y-8">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nom du Produit</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Nom commercial</label>
                 <input 
                   type="text" 
+                  required
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                  placeholder="Ex: Panier de légumes bio"
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold" 
+                  placeholder="Ex: Beurre de Karité Pur 500g"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-8">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Catégorie</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Catégorie</label>
                   <select 
+                    required
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm appearance-none cursor-pointer"
+                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold appearance-none cursor-pointer"
                   >
-                    <option>Alimentation</option>
-                    <option>Artisanat</option>
-                    <option>Maroquinerie</option>
-                    <option>Accessoires</option>
-                    <option>Electronique</option>
+                    <option value="" disabled>Sélectionner...</option>
+                    {Array.isArray(categories) && categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Marque (Optionnel)</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Marque (Optionnel)</label>
                   <input 
                     type="text" 
                     value={formData.brand}
                     onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                    placeholder="Ex: Faso Cuir"
+                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold" 
+                    placeholder="Ex: Faso Karité"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Description</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Description Storytelling</label>
                 <textarea 
-                  rows={4} 
+                  rows={6} 
+                  required
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm resize-none" 
-                  placeholder="Décrivez votre produit en détail..."
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-bold resize-none leading-relaxed italic" 
+                  placeholder="Racontez l'histoire de ce produit et ses bienfaits..."
                 ></textarea>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold border-b border-primary/5 pb-4">Prix & Stock</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-10">
+            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 border-b border-gray-50 pb-6 flex items-center gap-3">
+                <ImageIcon size={16} className="text-primary" /> Valeur & Stockage
+            </h3>
+            <div className="grid grid-cols-2 gap-8">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Prix (FCFA)</label>
-                <input 
-                  type="number" 
-                  value={formData.price}
-                  onChange={(e) => setFormData({...formData, price: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                  placeholder="0.00"
-                />
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Prix de Vente (FCFA)</label>
+                <div className="relative">
+                    <input 
+                    type="number" 
+                    required
+                    value={formData.price}
+                    onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    className="w-full pl-6 pr-16 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-black italic" 
+                    placeholder="0.00"
+                    />
+                    <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-300">FCFA</span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Quantité en stock</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Quantité initiale</label>
                 <input 
                   type="number" 
+                  required
                   value={formData.stock}
                   onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
+                  className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-black italic" 
                   placeholder="0"
                 />
               </div>
             </div>
           </div>
-
-          {/* Promotion Section (Optional) */}
-          <div className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm space-y-6">
-            <div className="flex items-center justify-between border-b border-primary/5 pb-4">
-              <div className="flex items-center gap-2">
-                <Tag size={18} className="text-primary" />
-                <h3 className="text-lg font-bold">Promotion (Optionnel)</h3>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
-                  checked={hasPromotion}
-                  onChange={() => setHasPromotion(!hasPromotion)}
-                />
-                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
-
-            {hasPromotion && (
-              <div className="space-y-6 transition-all animate-in fade-in slide-in-from-top-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Type de remise</label>
-                    <div className="flex p-1 bg-slate-50 rounded-xl border border-slate-200">
-                      <button 
-                        type="button"
-                        onClick={() => setDiscountType('percentage')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all outline-none ${discountType === 'percentage' ? 'bg-white shadow text-primary' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        Pourcentage (%)
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setDiscountType('fixed')}
-                        className={`flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition-all outline-none ${discountType === 'fixed' ? 'bg-white shadow text-primary' : 'text-slate-400 hover:text-slate-600'}`}
-                      >
-                        Montant fixe
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Valeur de la remise</label>
-                    <div className="relative">
-                      <input 
-                        type="number" 
-                        defaultValue={discountType === 'percentage' ? '20' : '5000'}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                        placeholder={discountType === 'percentage' ? '20' : '5000'}
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                         {discountType === 'percentage' ? <Percent size={14} /> : <span className="text-[10px] font-bold">FCFA</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                      <Calendar size={14} /> Date de début
-                    </label>
-                    <input 
-                      type="date" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                      <Calendar size={14} /> Date de fin
-                    </label>
-                    <input 
-                      type="date" 
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm" 
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Media Column */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm space-y-6">
-            <h3 className="text-lg font-bold border-b border-primary/5 pb-4">Médias</h3>
+        <div className="space-y-8">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8">
+            <h3 className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 border-b border-gray-50 pb-4">Galerie Photos</h3>
             
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-primary/20 rounded-2xl p-8 flex flex-col items-center justify-center text-center space-y-2 hover:bg-primary/5 transition-colors cursor-pointer group">
-                <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Upload size={24} />
+            <div className="space-y-6">
+              <label className="border-4 border-dashed border-primary/10 rounded-[2rem] p-10 flex flex-col items-center justify-center text-center space-y-4 hover:bg-primary/5 transition-all cursor-pointer group relative overflow-hidden">
+                <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                <div className="w-16 h-16 bg-primary/10 text-primary rounded-[1.5rem] flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-primary/10">
+                  <Upload size={28} />
                 </div>
-                <div className="text-sm">
-                  <span className="font-bold text-primary">Cliquez pour uploader</span>
-                  <p className="text-slate-500 mt-1">PNG, JPG ou WEBP (Max. 5MB)</p>
+                <div className="text-xs">
+                  <span className="font-black text-primary uppercase tracking-widest">Choisir des photos</span>
+                  <p className="text-slate-400 mt-2 font-bold italic">Max. 5MB par fichier</p>
                 </div>
-              </div>
+              </label>
               
-              <div className="grid grid-cols-2 gap-3">
-                <div className="aspect-square bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300">
-                  <ImageIcon size={24} />
-                </div>
-                <div className="aspect-square bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300">
-                  <ImageIcon size={24} />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Existing Images */}
+                {existingImages.map((img, i) => (
+                    <div key={`exist-${i}`} className="aspect-square rounded-2xl border border-gray-100 relative group overflow-hidden">
+                        <img src={img} alt="Product" className="w-full h-full object-cover transition-transform group-hover:scale-110 duration-700" />
+                        <button 
+                            type="button"
+                            onClick={() => setImageToDelete(img)}
+                            className="absolute inset-0 bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                        >
+                            <Trash2 size={24} />
+                        </button>
+                    </div>
+                ))}
+                {/* New Images */}
+                {previews.map((preview, i) => (
+                    <div key={`new-${i}`} className="aspect-square rounded-2xl border border-primary/20 relative group overflow-hidden">
+                        <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                        <button 
+                            type="button"
+                            onClick={() => removeNewImage(i)}
+                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-red-500 transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    </div>
+                ))}
+                {(existingImages.length === 0 && previews.length === 0) && (
+                    <div className="aspect-square bg-slate-50 rounded-2xl border border-dashed border-gray-200 flex items-center justify-center text-slate-300 italic text-[10px] font-bold text-center p-4">
+                        Aucun média sélectionné
+                    </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl border border-primary/10 shadow-sm space-y-4">
-            <button className="w-full py-3 bg-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-primary/90 transition-all shadow-lg shadow-primary/20">
-              <Save size={20} />
-              {isEditing ? "Enregistrer les modifications" : "Publier le produit"}
-            </button>
-            <button className="w-full py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all outline-none">
-              Enregistrer comme brouillon
+          <div className="bg-gray-900 p-8 rounded-[2.5rem] shadow-2xl shadow-primary/10 space-y-4 flex flex-col">
+            <button 
+                type="submit"
+                disabled={saving}
+                className="w-full py-5 bg-primary text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-xl shadow-primary/30 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+              {isEditing ? "Sceller les modifs" : "Publier l'annonce"}
             </button>
             <button 
+              type="button"
               onClick={() => navigate(-1)}
-              className="w-full py-3 text-red-500 font-bold hover:bg-red-50 rounded-xl transition-all outline-none"
+              className="w-full py-4 text-slate-500 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-colors outline-none"
             >
-              Annuler
+              Annuler & Sortir
             </button>
           </div>
         </div>
-      </div>
+      </form>
+
+      <ConfirmModal
+        isOpen={!!imageToDelete}
+        onClose={() => setImageToDelete(null)}
+        onConfirm={removeExistingImage}
+        title="Supprimer l'image"
+        message="Voulez-vous vraiment supprimer cette image définitivement ?"
+        confirmLabel="Oui, supprimer"
+        variant="danger"
+      />
     </div>
   );
 }

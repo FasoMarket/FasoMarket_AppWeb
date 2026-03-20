@@ -3,24 +3,46 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
-  ShieldCheck,
-  AlertCircle,
+  ShieldCheck, // Keep ShieldCheck if it's used elsewhere, otherwise remove. Assuming it's not used in the new array.
+  AlertCircle, // Keep AlertCircle if it's used elsewhere, otherwise remove. Assuming it's not used in the new array.
   Settings,
   Search,
   Bell,
   LogOut,
-  Store
+  Store,
+  Mail, // Keep Mail if it's used elsewhere, otherwise remove. Assuming it's not used in the new array.
+  Tag,
+  Flag, // New icon
+  Percent, // New icon
+  AlertTriangle, // New icon
+  RefreshCw, // New icon
+  Megaphone, // New icon
+  BarChart2, // New icon
+  Image, // New icon
+  ShoppingBag, // New icon
+  DollarSign // New icon for payouts
 } from 'lucide-react';
 
 import { cn } from '../utils/cn';
+import { authService } from '../services/authService';
+import NotificationBell from '../components/NotificationBell';
+import PageWrapper from '../components/PageWrapper';
 
 
 const adminNavigation = [
-  { name: 'Tableau de bord', href: '/admin/dashboard', icon: LayoutDashboard },
-  { name: 'Gestion Vendeurs', href: '/admin/vendors', icon: ShieldCheck },
-  { name: 'Utilisateurs', href: '/admin/users', icon: Users },
-  { name: 'Produits Signalés', href: '/admin/reported', icon: AlertCircle },
-  { name: 'Paramètres', href: '/admin/settings', icon: Settings },
+  { to: '/admin',              label: 'Vue d\'ensemble',     icon: LayoutDashboard },
+  { to: '/admin/users',        label: 'Utilisateurs',     icon: Users },
+  { to: '/admin/vendors',      label: 'Vendeurs',         icon: Store },
+  { to: '/admin/catalogues',   label: 'Catégories',       icon: Tag },
+  { to: '/admin/content',      label: 'Contenu vitrine',  icon: Image },
+  { to: '/admin/promo-codes',  label: 'Codes promo',      icon: Percent },
+  { to: '/admin/disputes',     label: 'Litiges',          icon: AlertTriangle },
+  { to: '/admin/refunds',      label: 'Remboursements',   icon: RefreshCw },
+  { to: '/admin/communication',label: 'Communication',    icon: Megaphone },
+  { to: '/admin/analytics',    label: 'Analytiques',      icon: BarChart2 },
+  { to: '/admin/payouts',      label: 'Paiements',        icon: DollarSign },
+  { to: '/admin/reports',      label: 'Signalements',     icon: Flag },
+  { to: '/admin/settings',     label: 'Paramètres',       icon: Settings },
 ];
 
 
@@ -29,7 +51,8 @@ export default function AdminLayout() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    navigate('/');
+    authService.logout();
+    navigate('/login');
   };
 
 
@@ -44,23 +67,24 @@ export default function AdminLayout() {
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {adminNavigation.map((item) => {
-            const isActive = location.pathname.startsWith(item.href);
+            const isActive = location.pathname.startsWith(item.to); // Changed item.href to item.to
             return (
               <Link
-                key={item.name}
-                to={item.href}
+                key={item.label}
+                to={item.to}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium group",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-gray-600 hover:bg-gray-50 hover:text-primary"
+                    ? "bg-primary/10 text-primary shadow-sm shadow-primary/20"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 )}
               >
                 {(() => {
                   const Icon = item.icon;
-                  return <Icon size={20} />;
+                  return <Icon className={cn("w-5 h-5 transition-transform duration-200", isActive ? "scale-110" : "group-hover:scale-105")} />;
                 })()}
-                <span>{item.name}</span>
+                <span className="font-medium text-sm">{item.label}</span>
+                {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
               </Link>
             );
           })}
@@ -104,16 +128,15 @@ export default function AdminLayout() {
             </div>
           </div>
           <div className="flex items-center space-x-6">
-            <button className="relative p-2 text-gray-500 hover:text-primary transition-colors">
-              <Bell size={24} />
-              <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
-            </button>
+            <NotificationBell />
           </div>
         </header>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-8">
-          <Outlet />
+          <PageWrapper>
+            <Outlet />
+          </PageWrapper>
         </div>
       </main>
     </div>

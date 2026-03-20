@@ -1,100 +1,149 @@
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { adminService } from '../../services/adminService';
 import { 
+  Loader2, 
   Users, 
   Store, 
-  ShoppingCart, 
+  ShoppingBag, 
+  Clock, 
+  TrendingUp, 
+  CheckCircle2, 
+  XCircle, 
   AlertTriangle,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  TrendingUp,
-  ChevronRight
+  ShieldCheck
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '../../utils/cn';
-
-
-const stats = [
-  { name: 'Utilisateurs', value: '1,280', icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
-  { name: 'Vendeurs', value: '84', icon: Store, color: 'text-primary', bg: 'bg-primary/10' },
-  { name: 'Commandes', value: '3,420', icon: ShoppingCart, color: 'text-orange-600', bg: 'bg-orange-100' },
-  { name: 'Signalements', value: '12', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100' },
-];
-
-const pendingVendors = [
-  { id: 1, name: 'Sali Traoré', shop: 'Artisanat du Nord', date: 'Il y a 2h', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFPQA7aZv_-P4x1Uay1BEv1De50gj_YI74QqJYVGOlEL8wvUSP-Bi6OdbKWeZ2xaemqljgNdY8Af28ubxPnufN8QtjjjgRyQw1VSL0X9CM4M3g1OpuOQepsnkhC-Ks9h54K6of8YflgKu0n8BvmRMvTgAXsB2a-_3A-K0U2QEczsydGL7MP-PTlXoGEr3jFc570xIhdraaNMCNkM0R6w_ejK7ZfTfEHTG42Vgy-f9xtPMDyMNu608n84vy3ii9q-g0NT03kLBPkuJZ' },
-  { id: 2, name: 'Jean Coulibaly', shop: 'Savon Bio BF', date: 'Il y a 5h', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAFPQA7aZv_-P4x1Uay1BEv1De50gj_YI74QqJYVGOlEL8wvUSP-Bi6OdbKWeZ2xaemqljgNdY8Af28ubxPnufN8QtjjjgRyQw1VSL0X9CM4M3g1OpuOQepsnkhC-Ks9h54K6of8YflgKu0n8BvmRMvTgAXsB2a-_3A-K0U2QEczsydGL7MP-PTlXoGEr3jFc570xIhdraaNMCNkM0R6w_ejK7ZfTfEHTG42Vgy-f9xtPMDyMNu608n84vy3ii9q-g0NT03kLBPkuJZ' },
-];
+import { useToast } from '../../contexts/ToastContext';
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const res = await adminService.getStats();
+      setStats(res.data?.data || res.data);
+    } catch (err) {
+      console.error('Error fetching admin stats:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (id, action) => {
+    try {
+      if (action === 'approve') {
+        await adminService.approveVendor(id);
+        showToast('Vendeur approuvé', 'success');
+      } else {
+        await adminService.rejectVendor(id);
+        showToast('Vendeur rejeté', 'success');
+      }
+      fetchStats();
+    } catch (err) {
+      console.error(`Error ${action}ing vendor:`, err);
+      showToast(`Erreur lors de l'action`, 'error');
+    }
+  };
+
+  if (loading) return (
+    <div className="h-64 flex items-center justify-center">
+      <Loader2 className="w-12 h-12 text-primary animate-spin" />
+    </div>
+  );
+
+  const statsCards = [
+    { name: 'Utilisateurs', value: stats.totalUsers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-100' },
+    { name: 'Vendeurs', value: stats.totalVendors, icon: Store, color: 'text-primary', bg: 'bg-primary/10' },
+    { name: 'Produits', value: stats.totalProducts, icon: ShoppingBag, color: 'text-orange-600', bg: 'bg-orange-100' },
+    { name: 'Ventes (FCFA)', value: stats.totalSales, icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-100' },
+    { name: 'Commissions', value: stats.totalCommission, icon: ShieldCheck, color: 'text-purple-600', bg: 'bg-purple-100' },
+    { name: 'En attente', value: stats.pendingVendors, icon: Clock, color: 'text-red-600', bg: 'bg-red-100' },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Page Title */}
       <div>
         <h1 className="text-2xl font-black text-gray-900">Tableau de Bord Administrateur</h1>
-        <p className="text-gray-500">Aperçu global de l'activité de la plateforme.</p>
+        <p className="text-gray-500 font-medium italic">Aperçu global de l'activité de la plateforme.</p>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <div key={stat.name} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+        {statsCards.map((stat) => (
+          <div key={stat.name} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 hover:scale-[1.02] transition-all">
             <div className="flex items-center justify-between mb-4">
-               <div className={cn("p-3 rounded-xl", stat.bg)}>
-                {(() => {
-                  const Icon = stat.icon;
-                  return <Icon size={24} className={stat.color} />;
-                })()}
+               <div className={cn("p-3 rounded-2xl", stat.bg)}>
+                <stat.icon size={24} className={stat.color} />
                </div>
                <TrendingUp size={16} className="text-primary" />
             </div>
-            <p className="text-gray-500 text-sm font-bold">{stat.name}</p>
-            <h3 className="text-2xl font-black mt-1">{stat.value}</h3>
+            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">{stat.name}</p>
+            <h3 className="text-3xl font-black mt-1 text-gray-900">{stat.value?.toLocaleString()}</h3>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Pending Vendors Section */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/50">
-             <div className="flex items-center gap-2">
-                <Clock size={20} className="text-primary" />
-                <h3 className="text-lg font-black text-gray-900">Validations en attente</h3>
+        <div className="lg:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/40 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex justify-between items-center bg-[#fcfdfc]">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900">Validations en attente</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Nouveaux dossiers à traiter</p>
+                </div>
              </div>
-             <Link to="/admin/vendors" className="text-primary text-sm font-bold hover:underline flex items-center gap-1">
-                Tout voir <ChevronRight size={16} />
+             <Link to="/admin/vendors" className="px-5 py-2 bg-gray-50 text-gray-500 text-xs font-black uppercase tracking-widest rounded-xl hover:bg-gray-100 transition-all active:scale-95 border border-gray-100">
+                Tout voir
              </Link>
           </div>
-          <div className="divide-y divide-gray-100">
-             {pendingVendors.map((vendor) => (
-               <div key={vendor.id} className="p-6 flex items-center justify-between group hover:bg-gray-50 transition-colors">
+          <div className="divide-y divide-gray-50 bg-white">
+             {stats.pendingVendorsList?.map((vendor) => (
+               <div key={vendor._id} className="p-6 flex items-center justify-between group hover:bg-gray-50/50 transition-colors">
                   <div className="flex items-center gap-4">
-                     <img src={vendor.image} alt={vendor.name} className="w-12 h-12 rounded-full border border-gray-200" />
+                     <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 font-black">
+                        {vendor.name?.[0]}
+                     </div>
                      <div>
-                        <p className="font-bold text-gray-900">{vendor.name}</p>
-                        <p className="text-xs text-gray-500">{vendor.shop} • {vendor.date}</p>
+                        <p className="font-bold text-gray-900 text-sm">{vendor.name}</p>
+                        <p className="text-[10px] font-black text-primary uppercase tracking-tight">{vendor.shop} • {new Date(vendor.createdAt).toLocaleDateString()}</p>
                      </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                     <button className="p-2 text-green-600 hover:bg-green-50 rounded-xl transition-all border border-transparent hover:border-green-100" title="Valider">
-                        <CheckCircle2 size={20} />
+                  <div className="flex items-center gap-2">
+                     <button 
+                        onClick={() => handleAction(vendor._id, 'approve')}
+                        className="p-3 text-green-600 bg-green-50 rounded-xl transition-all border border-transparent hover:border-green-100 shadow-sm active:scale-90"
+                      >
+                        <CheckCircle2 size={18} />
                      </button>
-                     <button className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100" title="Refuser">
-                        <XCircle size={20} />
+                     <button 
+                        onClick={() => handleAction(vendor._id, 'reject')}
+                        className="p-3 text-red-500 bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100 shadow-sm active:scale-90"
+                      >
+                        <XCircle size={18} />
                      </button>
-                     <Link 
-                       to="/admin/vendors"
-                       className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-xs font-bold hover:bg-white hover:border-primary hover:text-primary transition-all"
-                     >
-                        Détails
-                     </Link>
                   </div>
                </div>
              ))}
           </div>
-          {pendingVendors.length === 0 && (
-             <div className="p-12 text-center">
-                <p className="text-gray-400 italic">Aucune validation en attente.</p>
+          {(!stats.pendingVendorsList || stats.pendingVendorsList.length === 0) && (
+             <div className="p-20 text-center space-y-4">
+                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto text-gray-300">
+                  <Store size={32} />
+                </div>
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-relaxed">Félicitations !<br/>Aucun dossier en attente.</p>
              </div>
           )}
         </div>
@@ -144,22 +193,4 @@ export default function AdminDashboard() {
   );
 }
 
-function ShieldCheck(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
+// ShieldCheck importé depuis lucide-react

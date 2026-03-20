@@ -11,7 +11,7 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
-
+import ConfirmModal from '../../components/ConfirmModal';
 
 const initialReports = [
   { id: 1, name: 'Baskets de Course', shop: 'Boutique Faso', reporter: 'Moussa K.', reason: 'Contrefaçon', date: '24 Mai 2024', status: 'En attente', image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCOeoDHCT4yarBqXnn_qtX2RMk-Tmf7k66WCb1og8HwRkfb9e7LLGeB0PDbr1PAzM8cyJfiA_X_extzhIIqAjUAIq1A4rRTrjLxlvQpm2OUPTH2IuFqMIZJW62lUUK3PW4D745o6w-8eaWTyqZGnnT3UxHLYRWk3lAWrRzR46bKQW4AZFuOb9NChC7aLdGeteBwCPvzz6bqhOuNdtRS8wvkmaMrNNugG3aQ8uhPScLnrRfFcjsWyL-9dD62QuEA9AcygqCXkpWpOLNi', details: "Ce produit ressemble à une copie bas de gamme d'une grande marque. Les finitions sont très mauvaises..." },
@@ -21,6 +21,7 @@ const initialReports = [
 export default function ReportedProducts() {
   const [reports, setReports] = useState(initialReports);
   const [selectedReport, setSelectedReport] = useState(null);
+  const [reportToDelete, setReportToDelete] = useState(null);
 
   const handleIgnore = (id) => {
     setReports(reports.map(report => 
@@ -29,8 +30,13 @@ export default function ReportedProducts() {
   };
 
   const handleDelete = (id) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce signalement ?")) {
-      setReports(reports.filter(report => report.id !== id));
+    setReportToDelete(id);
+  };
+
+  const confirmDelete = () => {
+    if (reportToDelete) {
+      setReports(reports.filter(report => report.id !== reportToDelete));
+      setReportToDelete(null);
     }
   };
 
@@ -193,6 +199,16 @@ export default function ReportedProducts() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!reportToDelete}
+        onClose={() => setReportToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Supprimer le signalement"
+        message="Êtes-vous sûr de vouloir supprimer ce signalement ?"
+        confirmLabel="Oui, supprimer"
+        variant="danger"
+      />
     </div>
   );
 }

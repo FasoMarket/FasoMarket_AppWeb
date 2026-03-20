@@ -1,26 +1,68 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     CheckCircle2,
     ArrowRight,
     User,
     Globe,
-    ShoppingCart
+    ShoppingCart,
+    Loader2,
+    AlertCircle,
+    Store
 } from 'lucide-react';
+import { authService } from '../services/authService';
+import { cartService } from '../services/cartService';
 
 export default function ClientRegister() {
     const navigate = useNavigate();
+    const [formData, setFormData] = useState({
+        name: '',
+        firstName: '',
+        email: '',
+        phone: '',
+        password: '',
+        confirmPassword: ''
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // In a real app, you'd handle form submission here
-        navigate('/');
+        setError('');
+
+        if (formData.password !== formData.confirmPassword) {
+            setError('Les mots de passe ne correspondent pas');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await authService.register({
+                name: `${formData.firstName} ${formData.name}`,
+                email: formData.email,
+                phone: formData.phone,
+                password: formData.password,
+                role: 'customer',
+            });
+            authService.saveSession(res.data.token, res.data.user);
+            try { await cartService.syncCart(); } catch(e) {}
+            navigate(res.data.user.role === 'vendor' ? '/vendor' : '/');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Erreur lors de l\'inscription');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
             {/* Header */}
             <header className="px-6 py-4 flex justify-between items-center max-w-[1400px] w-full mx-auto bg-white/50 backdrop-blur-sm z-50">
-                <div className="flex items-center gap-2">
+                <Link to="/" className="flex items-center gap-2">
                     <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
                         <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2L2 7L12 12L22 7L12 2Z" />
@@ -29,9 +71,9 @@ export default function ClientRegister() {
                         </svg>
                     </div>
                     <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
-                </div>
+                </Link>
                 <div className="flex items-center gap-6">
-                    <Link to="/vendor/login" className="text-sm font-bold text-gray-600 hover:text-[#17cf54]">
+                    <Link to="/vendor" className="text-sm font-bold text-gray-600 hover:text-[#17cf54]">
                         Espace Vendeur
                     </Link>
                     <Link to="/login" className="bg-[#e8faee] text-[#17cf54] px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d1f5db] transition-colors">
@@ -72,7 +114,7 @@ export default function ClientRegister() {
                         </div>
 
                         <p className="relative z-10 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            Rejoignez +10,000 acheteurs satisfaits
+                            Rejoignez la communauté FasoMarket
                         </p>
                     </div>
 
@@ -81,8 +123,17 @@ export default function ClientRegister() {
                         <div className="max-w-md mx-auto w-full space-y-8">
                             <div className="space-y-3">
                                 <h2 className="text-3xl font-black text-gray-900 tracking-tight">Créer votre compte</h2>
-                                <p className="text-gray-400 font-medium text-sm">Prêt à découvrir des trésors locaux ?</p>
+                                <p className="text-gray-400 font-medium text-sm">
+                                    Prêt à découvrir des trésors locaux ? Rejoignez FasoMarket dès aujourd'hui.
+                                </p>
                             </div>
+
+                            {error && (
+                                <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-bold">
+                                    <AlertCircle size={18} />
+                                    {error}
+                                </div>
+                            )}
 
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 <div className="grid grid-cols-2 gap-4">
@@ -90,16 +141,26 @@ export default function ClientRegister() {
                                         <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Nom</label>
                                         <input
                                             type="text"
+                                            name="name"
+                                            required
+                                            value={formData.name}
+                                            onChange={handleChange}
                                             placeholder="Traoré"
-                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Prénom</label>
                                         <input
                                             type="text"
+                                            name="firstName"
+                                            required
+                                            value={formData.firstName}
+                                            onChange={handleChange}
                                             placeholder="Moussa"
-                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                            disabled={loading}
                                         />
                                     </div>
                                 </div>
@@ -108,8 +169,13 @@ export default function ClientRegister() {
                                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
                                     <input
                                         type="email"
+                                        name="email"
+                                        required
+                                        value={formData.email}
+                                        onChange={handleChange}
                                         placeholder="moussa@example.com"
-                                        className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                        className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                        disabled={loading}
                                     />
                                 </div>
 
@@ -117,8 +183,13 @@ export default function ClientRegister() {
                                     <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Téléphone</label>
                                     <input
                                         type="tel"
+                                        name="phone"
+                                        required
+                                        value={formData.phone}
+                                        onChange={handleChange}
                                         placeholder="+226 -- -- -- --"
-                                        className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                        className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                        disabled={loading}
                                     />
                                 </div>
 
@@ -127,26 +198,44 @@ export default function ClientRegister() {
                                         <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Mot de passe</label>
                                         <input
                                             type="password"
+                                            name="password"
+                                            required
+                                            minLength={6}
+                                            value={formData.password}
+                                            onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Confirmation</label>
                                         <input
                                             type="password"
+                                            name="confirmPassword"
+                                            required
+                                            value={formData.confirmPassword}
+                                            onChange={handleChange}
                                             placeholder="••••••••"
-                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300"
+                                            className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all font-bold text-gray-700 placeholder:text-gray-300 disabled:opacity-50"
+                                            disabled={loading}
                                         />
                                     </div>
                                 </div>
 
                                 <button
                                     type="submit"
-                                    className="w-full py-4.5 bg-[#17cf54] text-white rounded-[1.5rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 active:scale-95 group mt-6"
+                                    disabled={loading}
+                                    className="w-full py-4.5 bg-[#17cf54] text-white rounded-[1.5rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 active:scale-95 group mt-6 h-[60px] disabled:bg-gray-400 disabled:shadow-none"
                                 >
-                                    S'inscrire maintenant
-                                    <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
+                                    {loading ? (
+                                        <Loader2 className="animate-spin" size={24} />
+                                    ) : (
+                                        <>
+                                            S'inscrire maintenant
+                                            <ArrowRight size={22} className="group-hover:translate-x-1 transition-transform" />
+                                        </>
+                                    )}
                                 </button>
                             </form>
 
@@ -161,7 +250,7 @@ export default function ClientRegister() {
             </main>
 
             <footer className="px-6 py-10 max-w-[1400px] w-full mx-auto border-t border-gray-50">
-                <div className="flex flex-col md:row justify-between items-center gap-6">
+                <div className="flex flex-col md:flex-row justify-between items-center gap-6">
                     <p className="text-xs font-black text-gray-400 uppercase tracking-widest">© 2024 FasoMarket</p>
                     <div className="flex gap-10">
                         {['Privacy', 'Terms'].map((item) => (

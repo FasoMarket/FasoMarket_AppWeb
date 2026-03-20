@@ -1,14 +1,39 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, Eye, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { Mail, Lock, Eye, ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
+import { authService } from '../services/authService';
+import { cartService } from '../services/cartService';
 import loginBg from '../assets/login-bg.png';
 
 export default function ClientLogin() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Simulate login and redirect to Home
-    navigate('/');
+    setLoading(true);
+    setError('');
+    try {
+      const res = await authService.login({ email, password });
+      authService.saveSession(res.data.token, res.data.user);
+
+      try { await cartService.syncCart(); } catch (e) {}
+
+      // Redirection selon le rôle
+      const role = res.data.user.role;
+      if (role === 'admin')  navigate('/admin');
+      else if (role === 'vendor') navigate('/vendor');
+      else navigate(location.state?.from?.pathname || '/');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Email ou mot de passe incorrect');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -26,7 +51,7 @@ export default function ClientLogin() {
           <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
         </Link>
         <div className="flex items-center gap-6">
-          <Link to="/vendor/login" className="text-sm font-bold text-gray-600 hover:text-[#17cf54]">
+          <Link to="/vendor" className="text-sm font-bold text-gray-600 hover:text-[#17cf54]">
             Espace Vendeur
           </Link>
           <Link to="/register" className="bg-[#e8faee] text-[#17cf54] px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d1f5db] transition-colors">
@@ -38,7 +63,7 @@ export default function ClientLogin() {
       <main className="flex-1 flex items-center justify-center p-4 sm:p-8 lg:p-12 bg-[#f8fafc]">
         <div className="max-w-[1100px] w-full bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 flex flex-col lg:row overflow-hidden min-h-[600px] border border-gray-100 flex-row">
           
-          {/* Left Side: Image with Text Overlay (adapted from vendor login) */}
+          {/* Left Side: Image with Text Overlay */}
           <div className="hidden lg:block w-1/2 relative">
             <img
               src={loginBg}
@@ -64,6 +89,13 @@ export default function ClientLogin() {
                 <p className="text-gray-400 font-medium">Bon retour parmi nous !</p>
               </div>
 
+              {error && (
+                <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl flex items-center gap-3 text-sm font-bold animate-shake">
+                  <AlertCircle size={18} />
+                  {error}
+                </div>
+              )}
+
               <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-1.5">
                   <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1 text-sm font-bold text-gray-700">E-mail</label>
@@ -71,8 +103,12 @@ export default function ClientLogin() {
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
                       type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="votre@email.com"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-gray-300 font-bold text-gray-700"
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-gray-300 font-bold text-gray-700 disabled:opacity-50"
+                      disabled={loading}
                     />
                   </div>
                 </div>
@@ -87,19 +123,34 @@ export default function ClientLogin() {
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-gray-300 font-bold text-gray-700"
+                      className="w-full pl-12 pr-12 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:bg-white focus:border-transparent outline-none transition-all placeholder:text-gray-300 font-bold text-gray-700 disabled:opacity-50"
+                      disabled={loading}
                     />
-                    <Eye className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 cursor-pointer" size={20} />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <Eye size={20} />
+                    </button>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4.5 bg-[#17cf54] text-white rounded-[1.5rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 active:scale-95 group mt-4"
+                  disabled={loading}
+                  className="w-full py-4.5 bg-[#17cf54] text-white rounded-[1.5rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 active:scale-95 group mt-4 h-[60px] disabled:bg-gray-400 disabled:shadow-none"
                 >
-                  Se connecter
+                  {loading ? (
+                    <Loader2 className="animate-spin" size={24} />
+                  ) : (
+                    'Se connecter'
+                  )}
                 </button>
 
                 <div className="relative py-2">

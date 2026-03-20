@@ -1,80 +1,110 @@
-import { useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  CheckCircle2, 
-  XCircle,
-  AlertCircle,
-  Store,
-  ExternalLink,
-  ShieldCheck,
-  ShieldAlert,
-  X,
-  Plus,
-  Trash2,
-  ChevronDown,
-  User,
-  Phone,
-  Mail,
-  MapPin,
-  Receipt
-} from 'lucide-react';
-import { cn } from '../../utils/cn';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-
-const initialVendors = [
-  { id: 1, name: 'Ibrahim Traoré', shop: 'Boutique Faso', email: 'ibrahim@faso.bf', status: 'Actif', sales: '250.000 FCFA', products: 12, rating: 4.8 },
-  { id: 2, name: 'Aminata Ouédraogo', shop: 'Savon Bio BF', email: 'aminata@bio.bf', status: 'Suspendu', sales: '45.000 FCFA', products: 5, rating: 4.2 },
-  { id: 3, name: 'Moussa Koné', shop: 'Faso Cuir', email: 'moussa@cuir.bf', status: 'En attente', sales: '0 FCFA', products: 8, rating: 0 },
-  { id: 4, name: 'Fanta Diallo', shop: 'Tissus du Sahel', email: 'fanta@tissus.bf', status: 'Actif', sales: '1.200.000 FCFA', products: 45, rating: 4.9 },
-];
+import { 
+  Plus, 
+  Search, 
+  ChevronDown, 
+  Filter, 
+  ShieldAlert, 
+  ShieldCheck, 
+  ExternalLink, 
+  Trash2, 
+  Store, 
+  X, 
+  User, 
+  Phone, 
+  Receipt, 
+  Mail, 
+  MapPin, 
+  Loader2 
+} from 'lucide-react';
+import { adminService } from '../../services/adminService';
+import { cn } from '../../utils/cn';
+import Modal from '../../components/Modal';
+import ConfirmModal from '../../components/ConfirmModal';
+import { useToast } from '../../contexts/ToastContext';
 
 export default function VendorManagement() {
-  const [vendors, setVendors] = useState(initialVendors);
+  const [vendors, setVendors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Tous');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [vendorToDelete, setVendorToDelete] = useState(null);
   const [newVendor, setNewVendor] = useState({ name: '', shop: '', email: '', phone: '', city: '', ifu: '' });
+  const { showToast } = useToast();
 
-  // Filtering logic
-  const filteredVendors = vendors.filter(vendor => {
-    const matchesSearch = vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          vendor.shop.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          vendor.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'Tous' || vendor.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  useEffect(() => {
+    fetchVendors();
+  }, []);
 
-  const handleToggleStatus = (id) => {
-    setVendors(vendors.map(v => {
-      if (v.id === id) {
-        return { ...v, status: v.status === 'Actif' ? 'Suspendu' : 'Actif' };
-      }
-      return v;
-    }));
-  };
-
-  const handleDeleteVendor = (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce vendeur ?')) {
-      setVendors(vendors.filter(v => v.id !== id));
+  const fetchVendors = async () => {
+    try {
+      setLoading(true);
+      const res = await adminService.getVendors();
+      setVendors(res.data);
+    } catch (err) {
+      console.error('Error fetching vendors:', err);
+      setError('Impossible de charger les vendeurs.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddVendor = (e) => {
+  const filteredVendors = vendors.filter(vendor => {
+    const matchesSearch = (vendor.name?.toLowerCase().includes(searchTerm.toLowerCase())) || 
+                          (vendor.email?.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Status filter: Tous, Actif (approved), En attente (not approved)
+    const isApproved = vendor.isVendorApproved;
+    const matchesStatus = statusFilter === 'Tous' || 
+                         (statusFilter === 'Actif' && isApproved) || 
+                         (statusFilter === 'En attente' && !isApproved);
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleToggleStatus = async (id, currentStatus) => {
+    try {
+      if (currentStatus) {
+        await adminService.rejectVendor(id);
+      } else {
+        await adminService.approveVendor(id);
+        showToast('Vendeur approuvé', 'success');
+      }
+      fetchVendors();
+    } catch (err) {
+      console.error('Error toggling vendor status:', err);
+      showToast('Erreur lors de la modification du statut', 'error');
+    }
+  };
+
+  const handleDeleteVendor = async () => {
+    if (!vendorToDelete) return;
+    try {
+      await adminService.deleteUser(vendorToDelete);
+      showToast('Vendeur supprimé', 'success');
+      fetchVendors();
+    } catch (err) {
+      console.error('Error deleting vendor:', err);
+      showToast('Erreur lors de la suppression', 'error');
+    } finally {
+      setVendorToDelete(null);
+    }
+  };
+
+  const handleAddVendor = async (e) => {
     e.preventDefault();
-    const vendorToAdd = {
-      ...newVendor,
-      id: Date.now(),
-      status: 'En attente',
-      sales: '0 FCFA',
-      products: 0,
-      rating: 0
-    };
-    setVendors([vendorToAdd, ...vendors]);
-    setNewVendor({ name: '', shop: '', email: '', phone: '', city: '', ifu: '' });
+    showToast('Création de vendeur via admin bientôt disponible', 'info');
     setIsModalOpen(false);
   };
+
+  if (loading) return (
+    <div className="h-64 flex items-center justify-center">
+      <Loader2 className="w-12 h-12 text-primary animate-spin" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -118,7 +148,10 @@ export default function VendorManagement() {
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
           </div>
-          <button className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100 transition-colors text-gray-400">
+          <button 
+            onClick={() => showToast('Filtrage avancé bientôt disponible', 'info')}
+            className="p-2.5 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100 transition-colors text-gray-400"
+          >
             <Filter size={20} />
           </button>
         </div>
@@ -140,15 +173,15 @@ export default function VendorManagement() {
             </thead>
             <tbody className="divide-y divide-gray-50 font-medium text-slate-700">
               {filteredVendors.map((vendor) => (
-                <tr key={vendor.id} className="hover:bg-gray-50/50 transition-colors group">
+                <tr key={vendor._id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-black text-xs">
-                        {vendor.name.split(' ').map(n => n[0]).join('')}
+                        {vendor.name?.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div>
                         <div className="font-bold text-gray-900 group-hover:text-primary transition-colors">{vendor.name}</div>
-                        <div className="text-primary text-xs font-bold leading-tight">{vendor.shop}</div>
+                        <div className="text-primary text-xs font-bold leading-tight">{vendor.store?.name || 'Pas de boutique'}</div>
                         <div className="text-gray-400 text-[10px] uppercase font-black tracking-wider mt-0.5">{vendor.email}</div>
                       </div>
                     </div>
@@ -156,43 +189,42 @@ export default function VendorManagement() {
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
-                      vendor.status === 'Actif' ? "bg-primary/10 text-primary border-primary/20" : 
-                      vendor.status === 'Suspendu' ? "bg-red-50 text-red-500 border-red-100" : 
+                      vendor.isVendorApproved ? "bg-primary/10 text-primary border-primary/20" : 
                       "bg-orange-50 text-orange-500 border-orange-100 font-bold"
                     )}>
-                      {vendor.status}
+                      {vendor.isVendorApproved ? 'Actif' : 'En attente'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm font-black text-gray-900">{vendor.sales}</td>
-                  <td className="px-6 py-4 text-sm font-bold text-slate-500">{vendor.products}</td>
+                  <td className="px-6 py-4 text-sm font-black text-gray-900">N/A</td>
+                  <td className="px-6 py-4 text-sm font-bold text-slate-500">N/A</td>
                   <td className="px-6 py-4 text-sm">
                     <div className="flex items-center gap-1 text-yellow-500 font-black">
-                      ★ {vendor.rating > 0 ? vendor.rating : 'Nouveau'}
+                      ★ {vendor.store?.rating || 'Nouveau'}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                        <button 
-                         onClick={() => handleToggleStatus(vendor.id)}
+                         onClick={() => handleToggleStatus(vendor._id, vendor.isVendorApproved)}
                          className={cn(
                            "p-2 rounded-xl transition-all border border-transparent shadow-sm hover:shadow-md active:scale-95",
-                           vendor.status === 'Actif' 
+                           vendor.isVendorApproved 
                              ? "text-orange-500 bg-orange-50 hover:border-orange-100" 
                              : "text-primary bg-primary/10 hover:border-primary/20"
                          )}
-                         title={vendor.status === 'Actif' ? "Suspendre" : "Activer"}
+                         title={vendor.isVendorApproved ? "Suspendre" : "Approuver"}
                        >
-                         {vendor.status === 'Actif' ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
+                         {vendor.isVendorApproved ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
                        </button>
                        <Link 
-                         to={`/shop/${vendor.id}`}
+                         to={`/shop/${vendor.store?.slug || vendor.store?._id || '#'}`}
                          className="p-2 text-blue-500 bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95" 
                          title="Voir la boutique"
                        >
                          <ExternalLink size={18} />
                        </Link>
                        <button 
-                         onClick={() => handleDeleteVendor(vendor.id)}
+                         onClick={() => setVendorToDelete(vendor._id)}
                          className="p-2 text-red-500 bg-red-50 border border-transparent hover:border-red-100 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95"
                          title="Supprimer"
                        >
@@ -216,65 +248,41 @@ export default function VendorManagement() {
         </div>
       </div>
 
-      {/* Nouveau Vendeur Modal - Premium Design */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden border border-white/20 animate-in zoom-in-95 duration-200">
-            {/* Header with Gradient */}
-            <div className="p-8 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-800 flex justify-between items-center relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                 <Store size={120} className="text-primary rotate-12" />
-              </div>
-              <div className="relative z-10 flex items-center gap-4">
-                <div className="p-3 bg-primary text-white rounded-2xl shadow-lg shadow-primary/20">
-                  <Plus size={24} />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-white leading-tight">Nouveau Partenaire</h3>
-                  <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-1">Expansion du réseau FasoMarket</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="relative z-10 p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleAddVendor} className="p-8 pb-10 space-y-8 max-h-[70vh] overflow-y-auto">
+      {/* Nouveau Vendeur Modal */}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Nouveau Partenaire" size="lg">
+            <form onSubmit={handleAddVendor} className="space-y-8">
               {/* Section 1: Identité */}
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-1 h-4 bg-primary rounded-full"></div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Identité du Responsable</h4>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Identité du Responsable</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Nom Complet</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Nom Complet</label>
                     <div className="relative group">
-                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="text" 
                         value={newVendor.name}
                         onChange={(e) => setNewVendor({...newVendor, name: e.target.value})}
                         placeholder="Ex: Ibrahim Traoré"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Téléphone</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Téléphone</label>
                     <div className="relative group">
-                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="tel" 
                         value={newVendor.phone}
                         onChange={(e) => setNewVendor({...newVendor, phone: e.target.value})}
                         placeholder="+226 XX XX XX XX"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
@@ -285,34 +293,34 @@ export default function VendorManagement() {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-1 h-4 bg-primary rounded-full"></div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Informations Boutique</h4>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Informations Boutique</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Nom de la Boutique</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Nom de la Boutique</label>
                     <div className="relative group">
-                      <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <Store className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="text" 
                         value={newVendor.shop}
                         onChange={(e) => setNewVendor({...newVendor, shop: e.target.value})}
                         placeholder="Ex: Faso Artisanat"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Numéro IFU</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Numéro IFU</label>
                     <div className="relative group">
-                      <Receipt className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <Receipt className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="text" 
                         value={newVendor.ifu}
                         onChange={(e) => setNewVendor({...newVendor, ifu: e.target.value})}
                         placeholder="0012345678X"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
@@ -323,34 +331,34 @@ export default function VendorManagement() {
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-1 h-4 bg-primary rounded-full"></div>
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Localisation & Contact</h4>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Localisation & Contact</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Email Professionnel</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Email Professionnel</label>
                     <div className="relative group">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="email" 
                         value={newVendor.email}
                         onChange={(e) => setNewVendor({...newVendor, email: e.target.value})}
                         placeholder="vendeur@faso.bf"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="block text-xs font-black text-gray-500 ml-1">Ville</label>
+                    <label className="block text-xs font-black text-slate-500 ml-1">Ville</label>
                     <div className="relative group">
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
                       <input 
                         required
                         type="text" 
                         value={newVendor.city}
                         onChange={(e) => setNewVendor({...newVendor, city: e.target.value})}
                         placeholder="Ouagadougou"
-                        className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-gray-900" 
+                        className="w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-sm font-bold text-slate-900" 
                       />
                     </div>
                   </div>
@@ -361,7 +369,7 @@ export default function VendorManagement() {
                 <button 
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 py-4 border border-gray-200 text-gray-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-50 transition-all active:scale-95"
+                  className="flex-1 py-4 border border-slate-200 text-slate-600 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-slate-50 transition-all active:scale-95"
                 >
                   Fermer
                 </button>
@@ -373,9 +381,17 @@ export default function VendorManagement() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
+
+      <ConfirmModal
+        isOpen={!!vendorToDelete}
+        onClose={() => setVendorToDelete(null)}
+        onConfirm={handleDeleteVendor}
+        title="Supprimer le vendeur ?"
+        message="Voulez-vous vraiment supprimer ce vendeur ? Cette action est irréversible."
+        confirmLabel="Oui, supprimer"
+        variant="danger"
+      />
     </div>
   );
 }
