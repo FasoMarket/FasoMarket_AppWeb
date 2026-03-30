@@ -43,22 +43,6 @@ export default function OrderSuccess() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col">
-            <header className="py-6 px-8 flex justify-between items-center bg-white/50 backdrop-blur-sm border-b border-gray-100">
-                <Link to="/" className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-[#16c44f] rounded-lg p-1.5 shadow-lg shadow-[#16c44f]/20">
-                        <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                            <path d="M2 17L12 22L22 17" />
-                            <path d="M2 12L12 17L22 12" />
-                        </svg>
-                    </div>
-                    <span className="text-xl font-black text-gray-900">FasoMarket</span>
-                </Link>
-                <Link to="/products" className="text-xs font-black text-gray-400 hover:text-[#16c44f] transition-colors uppercase tracking-widest">
-                    Continuer mes achats
-                </Link>
-            </header>
-
             <main className="flex-1 flex items-center justify-center p-6">
                 <div className="max-w-[1000px] w-full bg-white rounded-[3rem] shadow-2xl shadow-gray-200/50 overflow-hidden border border-gray-100 flex flex-col lg:flex-row">
                     

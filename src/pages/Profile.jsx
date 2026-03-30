@@ -187,17 +187,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900">Mon Profil</h1>
-          <div className="w-10" />
-        </div>
-      </div>
-
       {/* Alerts */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-2">
         {error && <Alert type="error" message={error} onClose={() => setError('')} />}

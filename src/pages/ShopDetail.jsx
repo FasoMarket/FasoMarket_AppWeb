@@ -11,7 +11,10 @@ import {
     Loader2,
     AlertCircle,
     Store,
-    Mail
+    Mail,
+    Tag,
+    Copy,
+    Check
 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { vendorService } from '../services/vendorService';
@@ -32,6 +35,9 @@ export default function ShopDetail() {
     const [sortBy, setSortBy] = useState('newest');
     const { showToast } = useToast();
     const [addingToCart, setAddingToCart] = useState(null);
+    const [reviews, setReviews] = useState([]);
+    const [promoCodes, setPromoCodes] = useState([]);
+    const [copiedCode, setCopiedCode] = useState(null);
 
     useEffect(() => {
         const loadShopData = async () => {
@@ -49,6 +55,23 @@ export default function ShopDetail() {
 
                 setShop(shopData);
                 setProducts(Array.isArray(productsData) ? productsData : (productsData?.products || []));
+                
+                // Charger les codes promo actifs de la boutique
+                try {
+                    const promoRes = await fetch(`/api/stores/${shopData._id}/promo-codes`);
+                    if (promoRes.ok) {
+                        const promoData = await promoRes.json();
+                        const activeCodes = (promoData.data || []).filter(code => {
+                            const now = new Date();
+                            return code.isActive && 
+                                   new Date(code.startDate) <= now && 
+                                   new Date(code.endDate) >= now;
+                        });
+                        setPromoCodes(activeCodes);
+                    }
+                } catch (err) {
+                    console.log('Codes promo non disponibles');
+                }
             } catch (err) {
                 console.error('Erreur chargement boutique:', err);
                 setError('Impossible de charger les détails de la boutique.');
@@ -86,6 +109,13 @@ export default function ShopDetail() {
         }
     };
 
+    const copyPromoCode = (code) => {
+        navigator.clipboard.writeText(code);
+        setCopiedCode(code);
+        setTimeout(() => setCopiedCode(null), 2000);
+        showToast('Code copié !', 'success');
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white">
@@ -119,43 +149,6 @@ export default function ShopDetail() {
 
     return (
         <div className="min-h-screen bg-[#fcfdfc] font-sans">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-20 gap-8">
-                        <Link to="/" className="flex items-center gap-2 shrink-0">
-                            <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-                        </Link>
-                        <div className="flex-1 max-w-xl relative hidden md:block">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Rechercher dans cette boutique..."
-                                className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
-                            />
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <Link to="/cart" className="relative p-2 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                <ShoppingCart size={22} />
-                            </Link>
-
-                            {authService.isLoggedIn() && (
-                                <Link to="/messages" className="relative p-2 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                    <Mail size={22} />
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 
                 {/* Shop Banner & Profile */}
@@ -222,30 +215,66 @@ export default function ShopDetail() {
                         </div>
                     </div>
 
-                    <div className="bg-[#f2fdf6] rounded-3xl p-8 border border-[#ccf7de] space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Performance</h3>
-                            <button 
-                                onClick={() => showToast('Avis complets bientôt disponibles', 'info')}
-                                className="text-xs font-black text-[#16c44f] uppercase tracking-widest hover:underline"
-                            >
-                                Voir tous les avis
-                            </button>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                            <span className="text-2xl font-black text-[#17cf54]">{shop.rating?.average || '5.0'}</span>
-                            <Star size={20} className="text-[#17cf54] fill-[#17cf54]" />
-                        </div>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between text-xs font-bold">
-                                <span className="text-gray-400 uppercase tracking-widest">Produits</span>
-                                <span className="text-gray-900">{products.length}</span>
+                    <div className="space-y-6">
+                        <div className="bg-[#f2fdf6] rounded-3xl p-8 border border-[#ccf7de] space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Performance</h3>
                             </div>
-                            <div className="flex items-center justify-between text-xs font-bold">
-                                <span className="text-gray-400 uppercase tracking-widest">Ventes</span>
-                                <span className="text-gray-900">{shop.salesCount || 0}+</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-2xl font-black text-[#17cf54]">{shop.rating?.average || '5.0'}</span>
+                                <Star size={20} className="text-[#17cf54] fill-[#17cf54]" />
+                            </div>
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between text-xs font-bold">
+                                    <span className="text-gray-400 uppercase tracking-widest">Produits</span>
+                                    <span className="text-gray-900">{products.length}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs font-bold">
+                                    <span className="text-gray-400 uppercase tracking-widest">Ventes</span>
+                                    <span className="text-gray-900">{shop.salesCount || 0}+</span>
+                                </div>
                             </div>
                         </div>
+
+                        {/* Promo Codes Section */}
+                        {promoCodes.length > 0 && (
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 border border-amber-200 space-y-4">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <Tag size={20} className="text-amber-600" />
+                                    <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight">Codes Promo</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    {promoCodes.map((code) => (
+                                        <div key={code._id} className="bg-white rounded-2xl p-4 flex items-center justify-between border border-amber-100 hover:border-amber-300 transition-all">
+                                            <div className="flex-1">
+                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Code Promo</p>
+                                                <p className="text-lg font-black text-gray-900">{code.code}</p>
+                                                <p className="text-xs text-amber-600 font-bold mt-1">
+                                                    {code.type === 'percentage' ? `-${code.value}%` : `-${code.value} FCFA`}
+                                                    {code.minOrderAmount > 0 && ` • Min: ${code.minOrderAmount} FCFA`}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => copyPromoCode(code.code)}
+                                                className="ml-4 px-4 py-2 bg-amber-100 text-amber-600 rounded-xl font-bold text-sm hover:bg-amber-200 transition-all flex items-center gap-2 active:scale-95"
+                                            >
+                                                {copiedCode === code.code ? (
+                                                    <>
+                                                        <Check size={16} />
+                                                        Copié
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy size={16} />
+                                                        Copier
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -300,7 +329,7 @@ export default function ShopDetail() {
                                 <div className="px-2">
                                     <h3 className="font-bold text-gray-900 line-clamp-1 leading-tight">{product.name}</h3>
                                     <div className="flex justify-between items-center mt-3">
-                                        <p className="text-lg font-black text-gray-900">{product.price.toLocaleString()} FCFA</p>
+                                        <p className="text-lg font-black text-gray-900">{product.price?.toLocaleString() || '---'} FCFA</p>
                                         <div className="flex items-center gap-1 text-[10px] font-black text-yellow-500">
                                             <Star size={12} fill="currentColor" />
                                             <span className="text-gray-400">{product.rating?.average || 0}</span>
@@ -315,6 +344,42 @@ export default function ShopDetail() {
                                 <p className="text-sm font-medium text-gray-500 mt-2">Revenez bientôt pour découvrir nos nouveautés.</p>
                             </div>
                         )}
+                    </div>
+                </section>
+
+                {/* Reviews Section */}
+                <section className="space-y-10 mt-20 pt-20 border-t border-gray-100">
+                    <div>
+                        <h2 className="text-3xl font-black text-gray-900 lowercase italic">Avis clients</h2>
+                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Ce que les clients pensent de cette boutique</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Rating Summary */}
+                        <div className="bg-[#f2fdf6] rounded-3xl p-8 border border-[#ccf7de] space-y-6">
+                            <div className="flex items-center gap-3">
+                                <span className="text-4xl font-black text-[#17cf54]">{shop.rating?.average || '5.0'}</span>
+                                <div className="flex flex-col">
+                                    <div className="flex gap-1">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star 
+                                                key={i} 
+                                                size={16} 
+                                                className={i < Math.round(shop.rating?.average || 5) ? "text-[#17cf54] fill-[#17cf54]" : "text-gray-300"}
+                                            />
+                                        ))}
+                                    </div>
+                                    <span className="text-xs font-bold text-gray-400 mt-1">{shop.rating?.count || 0} avis</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Recent Reviews */}
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-500 font-medium italic">
+                                Les avis des clients apparaîtront ici une fois que des achats auront été effectués.
+                            </p>
+                        </div>
                     </div>
                 </section>
             </main>

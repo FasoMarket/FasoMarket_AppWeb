@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     ChevronRight,
+    ChevronLeft,
     Truck,
     ShieldCheck,
     CreditCard,
@@ -18,6 +19,7 @@ import { productService } from '../services/productService';
 import { storeService }   from '../services/storeService';
 import { authService }    from '../services/authService';
 import { useCart }        from '../contexts/CartContext';
+import { useToast }       from '../contexts/ToastContext';
 import { relationService } from '../services/relationService';
 
 // Assets
@@ -26,6 +28,8 @@ import heroHome from '../assets/hero-home.png';
 export default function Home() {
     const navigate = useNavigate();
     const { cartCount, addToCart, loading: cartLoading } = useCart();
+    const toastContext = useToast();
+    const showToast = toastContext?.showToast || (() => {});
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [trendingProducts, setTrendingProducts] = useState([]);
     const [featuredStores, setFeaturedStores] = useState([]);
@@ -33,6 +37,8 @@ export default function Home() {
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [addingToCart, setAddingToCart] = useState(null);
+    const [categoryScroll, setCategoryScroll] = useState(0);
+    const categoriesRef = useRef(null);
     const user = authService.getUser();
 
     useEffect(() => {
@@ -79,13 +85,32 @@ export default function Home() {
         }
     };
 
-    const handleAddToCart = async (e, productId) => {
-        e.preventDefault(); // Prevent navigating to detail page if wrapped in Link
-        setAddingToCart(productId);
+    const handleAddToCart = async (e, product) => {
+        console.log('🛒 BUTTON CLICKED - handleAddToCart called');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        console.log('🛒 handleAddToCart called with product:', product?.name);
+        console.log('🛒 showToast function:', typeof showToast);
+        
+        // Vérifier si l'utilisateur est connecté
+        if (!authService.isLoggedIn()) {
+            console.log('❌ User not logged in');
+            showToast('Veuillez vous connecter pour ajouter au panier', 'info');
+            navigate('/login');
+            return;
+        }
+        
+        console.log('✅ User is logged in');
+        setAddingToCart(product._id);
         try {
-            await addToCart(productId, 1);
+            console.log('📤 Adding to cart:', product._id, 1, product?.name);
+            await addToCart(product._id, 1, product);
+            console.log('✅ Product added to cart');
+            showToast('Produit ajouté au panier !', 'success');
         } catch (err) {
-            console.error('Erreur ajout panier:', err);
+            console.error('❌ Error adding to cart:', err);
+            showToast('Erreur lors de l\'ajout au panier', 'error');
             if (err.response?.status === 401) navigate('/login');
         } finally {
             setAddingToCart(null);
@@ -101,18 +126,53 @@ export default function Home() {
         return Cpu;
     };
 
+    const scrollCategories = (direction) => {
+        if (!categoriesRef.current) return;
+        const scrollAmount = 300;
+        const newScroll = direction === 'left' 
+            ? categoryScroll - scrollAmount 
+            : categoryScroll + scrollAmount;
+        
+        categoriesRef.current.scrollTo({
+            left: newScroll,
+            behavior: 'smooth'
+        });
+        setCategoryScroll(newScroll);
+    };
+
+    const getHeroCTA = () => {
+        if (!user) {
+            return { text: 'Explorer le Marché', link: '/products', color: 'bg-[#17cf54] hover:bg-[#12a643]' };
+        }
+        if (user.role === 'vendor') {
+            if (user.isVendorApproved) {
+                return { text: 'Aller au Dashboard', link: '/vendor', color: 'bg-[#17cf54] hover:bg-[#12a643]' };
+            } else {
+                return { text: 'Voir le Statut', link: '/vendor/pending-approval', color: 'bg-yellow-500 hover:bg-yellow-600' };
+            }
+        }
+        return { text: 'Continuer vos Achats', link: '/products', color: 'bg-[#17cf54] hover:bg-[#12a643]' };
+    };
+
+    const getVendorCTA = () => {
+        if (!user || user.role !== 'vendor') {
+            return { text: 'Ouvrir ma Boutique', link: '/register-vendor', color: 'bg-[#17cf54] hover:bg-[#12a643]' };
+        }
+        return null; // Ne pas afficher si déjà vendeur
+    };
+
     return (
         <div className="min-h-screen bg-white">
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-20">
 
                 {/* Hero Section */}
-                <section className="bg-[#e8faee] rounded-[3rem] overflow-hidden flex flex-col lg:flex-row relative min-h-[500px]">
+                <section className="bg-[#e8faee] rounded-[3rem] overflow-hidden flex flex-col lg:flex-row relative min-h-[400px]">
                     <div className="flex-1 p-12 lg:p-20 space-y-8 self-center relative z-10">
                         <div className="inline-flex items-center gap-2 bg-white/50 backdrop-blur-sm px-4 py-2 rounded-full border border-white/50">
                             <span className="flex w-2 h-2 rounded-full bg-[#17cf54] animate-pulse"></span>
                             <span className="text-xs font-bold text-[#12a643] uppercase tracking-wider">100% Artisanal & Local</span>
                         </div>
-                        <h1 className="text-5xl lg:text-7xl font-black text-gray-900 leading-[1.1]">
+                        <h1 className="text-5xl lg:text-6xl font-black text-gray-900 leading-[1.1]">
                             L'excellence <br />
                             <span className="text-[#17cf54]">Burkinabè</span> à <br />
                             votre porte.
@@ -121,9 +181,17 @@ export default function Home() {
                             Soutenez l'économie locale. Découvrez une sélection unique d'artisanat, de mode Faso Danfani et de produits du terroir.
                         </p>
                         <div className="flex flex-wrap gap-4">
-                            <Link to="/products" className="px-8 py-4 bg-[#17cf54] text-white rounded-2xl font-bold hover:bg-[#12a643] transition-all shadow-xl shadow-[#17cf54]/20 hover:-translate-y-1 inline-block">
-                                Explorer le Marché
-                            </Link>
+                            {(() => {
+                                const cta = getHeroCTA();
+                                return (
+                                    <Link 
+                                        to={cta.link} 
+                                        className={`px-8 py-4 ${cta.color} text-white rounded-2xl font-bold transition-all shadow-xl shadow-[#17cf54]/20 hover:-translate-y-1 inline-block`}
+                                    >
+                                        {cta.text}
+                                    </Link>
+                                );
+                            })()}
                         </div>
                     </div>
                     <div className="flex-1 relative overflow-hidden hidden lg:block">
@@ -132,6 +200,42 @@ export default function Home() {
                             alt="Artisane Burkinabè"
                             className="absolute inset-0 w-full h-full object-cover object-center"
                         />
+                    </div>
+                </section>
+
+                {/* How It Works Section */}
+                <section className="space-y-8">
+                    <div className="text-center space-y-2">
+                        <h2 className="text-3xl font-black text-gray-900">Comment ça marche ?</h2>
+                        <p className="text-gray-500 font-medium tracking-tight">Trois étapes simples pour trouver vos produits préférés</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            { 
+                                step: '1', 
+                                title: 'Parcourez', 
+                                desc: 'Explorez nos catégories et découvrez des produits uniques d\'artisans burkinabè certifiés.' 
+                            },
+                            { 
+                                step: '2', 
+                                title: 'Achetez', 
+                                desc: 'Ajoutez vos articles au panier et payez en toute sécurité via Mobile Money ou carte bancaire.' 
+                            },
+                            { 
+                                step: '3', 
+                                title: 'Recevez', 
+                                desc: 'Suivez votre commande et recevez vos produits rapidement partout au Burkina Faso.' 
+                            }
+                        ].map((item, i) => (
+                            <div key={i} className="text-center space-y-4 p-6 bg-[#f8fafc] rounded-2xl border border-gray-100 hover:shadow-lg transition-all">
+                                <div className="w-12 h-12 mx-auto bg-[#17cf54] text-white rounded-full flex items-center justify-center font-black text-lg shadow-lg shadow-[#17cf54]/20">
+                                    {item.step}
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900">{item.title}</h3>
+                                <p className="text-sm text-gray-500 font-medium leading-relaxed">{item.desc}</p>
+                            </div>
+                        ))}
                     </div>
                 </section>
 
@@ -144,30 +248,53 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        {loading ? (
-                            Array(4).fill(0).map((_, i) => (
-                                <div key={i} className="bg-gray-50 h-48 rounded-[2.5rem] animate-pulse"></div>
-                            ))
-                        ) : (
-                            categories.map((cat) => {
-                                const Icon = getCategoryIcon(cat.name || cat);
-                                return (
-                                    <Link 
-                                        to={`/products?category=${encodeURIComponent(cat.name || cat)}`} 
-                                        key={cat.id || (cat.name || cat)} 
-                                        className="bg-white p-8 rounded-[2.5rem] border border-gray-100 space-y-6 hover:shadow-xl hover:shadow-gray-200/50 transition-all cursor-pointer group text-center"
-                                    >
-                                        <div className="w-14 h-14 mx-auto text-[#17cf54] bg-[#e8faee] rounded-2xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                                            <Icon size={28} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-900">{cat.name || cat}</h3>
-                                        </div>
-                                    </Link>
-                                );
-                            })
-                        )}
+                    <div className="relative group">
+                        {/* Flèche gauche */}
+                        <button
+                            onClick={() => scrollCategories('left')}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-6 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl hover:bg-[#17cf54] hover:text-white transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                            disabled={categoryScroll <= 0}
+                        >
+                            <ChevronLeft size={24} />
+                        </button>
+
+                        {/* Carousel */}
+                        <div
+                            ref={categoriesRef}
+                            className="flex gap-4 overflow-x-hidden scroll-smooth"
+                        >
+                            {loading ? (
+                                Array(6).fill(0).map((_, i) => (
+                                    <div key={i} className="flex-shrink-0 w-40 bg-gray-50 h-32 rounded-2xl animate-pulse"></div>
+                                ))
+                            ) : (
+                                categories.map((cat) => {
+                                    const Icon = getCategoryIcon(cat.name || cat);
+                                    return (
+                                        <Link 
+                                            to={`/products?category=${encodeURIComponent(cat.name || cat)}`} 
+                                            key={cat.id || (cat.name || cat)} 
+                                            className="flex-shrink-0 w-40 bg-white p-5 rounded-2xl border border-gray-100 space-y-3 hover:shadow-lg hover:shadow-gray-200/50 transition-all cursor-pointer group text-center"
+                                        >
+                                            <div className="w-12 h-12 mx-auto text-[#17cf54] bg-[#e8faee] rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                                                <Icon size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-gray-900 line-clamp-2">{cat.name || cat}</h3>
+                                            </div>
+                                        </Link>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        {/* Flèche droite */}
+                        <button
+                            onClick={() => scrollCategories('right')}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-6 z-10 bg-white rounded-full p-3 shadow-lg hover:shadow-xl hover:bg-[#17cf54] hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                        >
+                            <ChevronRight size={24} />
+                        </button>
                     </div>
                 </section>
 
@@ -175,10 +302,10 @@ export default function Home() {
                 <section className="space-y-8">
                     <div className="flex justify-between items-end">
                         <div className="space-y-2">
-                            <h2 className="text-3xl font-black text-gray-900">Produits Récents</h2>
+                            <h2 className="text-3xl font-black text-gray-900">Produits Tendance</h2>
                             <p className="text-gray-500 font-medium tracking-tight">Les pépites du moment sélectionnées pour vous</p>
                         </div>
-                        <Link to="/products?sort=-createdAt" className="flex items-center gap-2 text-[#17cf54] font-black hover:translate-x-1 transition-transform">
+                        <Link to="/products?sort=-viewCount" className="flex items-center gap-2 text-[#17cf54] font-black hover:translate-x-1 transition-transform">
                             Voir tout <ChevronRight size={20} />
                         </Link>
                     </div>
@@ -190,28 +317,37 @@ export default function Home() {
                             ))
                         ) : featuredProducts.length > 0 ? (
                             featuredProducts.map((item) => (
-                                <Link to={`/product/${item._id}`} key={item._id} className="group cursor-pointer space-y-4 block">
-                                    <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100 relative">
-                                        <img 
-                                            src={item.images?.[0] || item.image || item.img || 'https://placehold.co/400x400?text=Product'} 
-                                            alt={item.name} 
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
-                                        />
+                                <div key={item._id} className="space-y-4">
+                                    <div className="relative group">
+                                        <Link to={`/product/${item._id}`} className="block">
+                                            <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100">
+                                                <img 
+                                                    src={item.images?.[0] || item.image || item.img || 'https://placehold.co/400x400?text=Product'} 
+                                                    alt={item.name} 
+                                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                    onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
+                                                />
+                                            </div>
+                                        </Link>
                                         <button 
-                                            onClick={(e) => handleAddToCart(e, item._id)}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleAddToCart(e, item);
+                                            }}
                                             disabled={addingToCart === item._id}
-                                            className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl text-[#17cf54] shadow-lg hover:bg-[#17cf54] hover:text-white transition-all disabled:opacity-75"
+                                            className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl text-[#17cf54] shadow-lg hover:bg-[#17cf54] hover:text-white transition-all disabled:opacity-75 z-50 pointer-events-auto"
                                         >
                                             {addingToCart === item._id ? <Loader2 size={20} className="animate-spin" /> : <ShoppingCart size={20} />}
                                         </button>
                                     </div>
-                                    <div>
+                                    <Link to={`/product/${item._id}`} className="block hover:no-underline">
                                         <p className="text-[10px] font-bold text-[#17cf54] uppercase tracking-widest leading-none mb-1">{item.category}</p>
                                         <h3 className="font-bold text-gray-900 truncate">{item.name}</h3>
                                         <p className="text-lg font-black text-gray-900 mt-2">{item.price?.toLocaleString() || '---'} FCFA</p>
-                                    </div>
-                                </Link>
+                                    </Link>
+                                </div>
                             ))
                         ) : (
                             <div className="col-span-full py-12 text-center text-gray-400 font-medium italic">
@@ -285,22 +421,32 @@ export default function Home() {
                     })}
                 </section>
 
-                {/* Creator CTA */}
-                <section className="bg-gradient-to-br from-[#111827] to-[#1e293b] rounded-[3rem] p-12 lg:p-24 text-center space-y-12 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-[#17cf54]/10 rounded-full blur-[100px]"></div>
-                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px]"></div>
+                {/* Creator CTA - Contextualisé */}
+                {(() => {
+                    const vendorCTA = getVendorCTA();
+                    if (!vendorCTA) return null; // Ne pas afficher si déjà vendeur
+                    
+                    return (
+                        <section className="bg-gradient-to-br from-[#111827] to-[#1e293b] rounded-[3rem] p-12 lg:p-24 text-center space-y-12 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-[#17cf54]/10 rounded-full blur-[100px]"></div>
+                            <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px]"></div>
 
-                    <div className="max-w-3xl mx-auto space-y-6 relative z-10">
-                        <h2 className="text-4xl lg:text-6xl font-black text-white leading-tight">Vous êtes un artisan ?</h2>
-                        <p className="text-lg text-gray-400 font-medium">Rejoignez FasoMarket et commencez à vendre vos créations à travers le pays dès aujourd'hui.</p>
-                    </div>
+                            <div className="max-w-3xl mx-auto space-y-6 relative z-10">
+                                <h2 className="text-4xl lg:text-6xl font-black text-white leading-tight">Vous êtes un artisan ?</h2>
+                                <p className="text-lg text-gray-400 font-medium">Rejoignez FasoMarket et commencez à vendre vos créations à travers le pays dès aujourd'hui.</p>
+                            </div>
 
-                    <div className="flex flex-wrap gap-6 relative z-10">
-                        <Link to="/vendre" className="px-10 py-5 bg-[#17cf54] text-white rounded-2xl font-black hover:bg-[#12a643] transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95">
-                            Ouvrir ma boutique
-                        </Link>
-                    </div>
-                </section>
+                            <div className="flex flex-wrap gap-6 relative z-10 justify-center">
+                                <Link 
+                                    to={vendorCTA.link} 
+                                    className={`px-10 py-5 ${vendorCTA.color} text-white rounded-2xl font-black transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95`}
+                                >
+                                    {vendorCTA.text}
+                                </Link>
+                            </div>
+                        </section>
+                    );
+                })()}
             </main>
 
             {/* Footer */}
@@ -328,7 +474,7 @@ export default function Home() {
                         <div className="space-y-6">
                             <h4 className="font-black text-gray-900">Vendre</h4>
                             <nav className="flex flex-col gap-4 text-sm text-gray-500 font-medium">
-                                <Link to="/register" className="hover:text-[#17cf54]">Ouvrir une boutique</Link>
+                                <Link to="/register-vendor" className="hover:text-[#17cf54]">Ouvrir une boutique</Link>
                             </nav>
                         </div>
                     </div>

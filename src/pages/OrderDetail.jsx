@@ -23,6 +23,7 @@ import {
 import { orderService } from '../services/orderService';
 import { clientAdvancedService } from '../services/clientAdvancedService';
 import { useToast } from '../contexts/ToastContext';
+import OrderProgressBar from '../components/OrderProgressBar';
 
 export default function OrderDetail() {
     const { id } = useParams();
@@ -185,6 +186,9 @@ export default function OrderDetail() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Order Progress Bar */}
+                        <OrderProgressBar status={order.orderStatus} />
 
                         {/* Order Actions Toolbar */}
                         <div className="flex flex-wrap gap-4">

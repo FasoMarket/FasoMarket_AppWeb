@@ -23,6 +23,12 @@ export const vendorAdvancedService = {
   deletePromotion:     (id)            => API.delete(`/vendor/promotions/${id}`),
   togglePromotion:     (id)            => API.patch(`/vendor/promotions/${id}/toggle`),
 
+  // Codes Promo
+  getPromoCodes:       ()              => API.get('/vendor/promo-codes'),
+  createPromoCode:     (data)          => API.post('/vendor/promo-codes', data),
+  updatePromoCode:     (id, data)      => API.put(`/vendor/promo-codes/${id}`, data),
+  deletePromoCode:     (id)            => API.delete(`/vendor/promo-codes/${id}`),
+
   // Commandes
   getOrders:           (params)        => API.get('/vendor/orders-advanced', { params }),
   getOrderDetail:      (id)            => API.get(`/vendor/orders-advanced/${id}`),

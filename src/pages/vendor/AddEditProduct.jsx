@@ -125,6 +125,7 @@ export default function AddEditProduct() {
   const fetchProduct = async () => {
     try {
       const res = await productService.getById(id);
+      // res.data contient { success, message, data: {...} }
       const p = res.data?.data || res.data;
       if (p) {
         setFormData({

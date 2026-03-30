@@ -64,11 +64,12 @@ export default function Products() {
                 
                 // Correctly access .data from standardized API response
                 const productsData = productsRes.data?.data || [];
+                console.log('📦 Produits chargés:', productsData.length);
                 setProducts(productsData);
                 setTotal(productsRes.data?.pagination?.total || productsData.length);
                 setCategories(categoriesRes.data?.data || []);
             } catch (err) {
-                console.error('Erreur chargement produits:', err);
+                console.error('❌ Erreur chargement produits:', err);
                 setProducts([]);
                 setCategories([]);
                 setTotal(0);
@@ -108,22 +109,11 @@ export default function Products() {
 
     return (
         <div className="min-h-screen bg-white font-sans">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+            {/* Search Bar */}
+            <div className="sticky top-0 z-40 bg-white border-b border-gray-100 py-4">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-20 gap-8">
-                        <Link to="/" className="flex items-center gap-2">
-                            <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-                        </Link>
-
-                        <div className="flex-1 max-w-xl relative hidden md:block">
+                    <div className="flex gap-4">
+                        <div className="flex-1 relative">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             <input
                                 type="text"
@@ -137,30 +127,37 @@ export default function Products() {
                                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
                             />
                         </div>
-
-                        <div className="flex items-center gap-4">
-                            <Link to="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                <ShoppingCart size={22} />
-                            </Link>
-
-                            {authService.isLoggedIn() && (
-                                <Link to="/messages" className="relative p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                    <Mail size={22} />
-                                </Link>
-                            )}
-                        </div>
+                        <select
+                            value={sort}
+                            onChange={handleSortChange}
+                            className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
+                        >
+                            <option value="-createdAt">Récents</option>
+                            <option value="-viewCount">Tendance</option>
+                            <option value="price">Prix: Bas → Haut</option>
+                            <option value="-price">Prix: Haut → Bas</option>
+                        </select>
                     </div>
                 </div>
-            </header>
+            </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                {/* Page Header */}
+                <div className="mb-8 space-y-2">
+                    <h1 className="text-3xl font-black text-gray-900">Tous les Produits</h1>
+                    <p className="text-gray-500 font-medium">Découvrez notre sélection complète de produits artisanaux burkinabè</p>
+                </div>
+
                 <div className="flex flex-col lg:flex-row gap-12">
 
                     {/* Sidebar Filters */}
                     <aside className="hidden lg:block w-64 space-y-10">
                         <div className="space-y-6">
                             <div className="flex justify-between items-center">
-                                <h4 className="font-black text-xs uppercase tracking-widest text-[#17cf54]">Catégories</h4>
+                                <div className="space-y-1">
+                                    <h4 className="font-black text-sm text-gray-900">Filtrer par</h4>
+                                    <p className="text-xs text-gray-400 font-medium">Catégories</p>
+                                </div>
                                 {(category || search) && (
                                     <button onClick={clearFilters} className="text-[10px] font-black text-red-400 uppercase tracking-widest hover:text-red-600 transition-colors flex items-center gap-1">
                                         <X size={10} /> Reset
@@ -192,41 +189,65 @@ export default function Products() {
                             <p className="text-xs text-gray-400 font-medium leading-relaxed">
                                 Ouvrez votre boutique gratuitement et commencez à vendre aujourd'hui.
                             </p>
-                            <Link to="/register" className="block w-full py-3 bg-[#17cf54] text-white text-center text-xs font-black rounded-xl hover:bg-[#12a643] transition-all">
-                                Commencer
+                            <Link to="/register-vendor" className="block w-full py-3 bg-[#17cf54] text-white text-center text-xs font-black rounded-xl hover:bg-[#12a643] transition-all shadow-lg shadow-[#17cf54]/20 active:scale-95">
+                                Devenir Vendeur
                             </Link>
                         </div>
                     </aside>
 
                     {/* Main Content */}
                     <section className="flex-1 space-y-8">
-                        {/* Toolbar */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-6 bg-gray-50 rounded-3xl border border-gray-100 gap-4">
-                            <div className="flex items-center gap-4">
-                                <nav className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                    <Link to="/" className="hover:text-[#17cf54]">Home</Link>
-                                    <ChevronRight size={12} />
+                        {/* Toolbar - Amélioré */}
+                        <div className="space-y-4">
+                            {/* Breadcrumb et Compteur */}
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <nav className="flex items-center gap-2 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                                    <Link to="/" className="hover:text-[#17cf54] transition-colors">Accueil</Link>
+                                    <ChevronRight size={14} className="text-gray-300" />
                                     <span className="text-gray-900">Marché</span>
+                                    {category && (
+                                        <>
+                                            <ChevronRight size={14} className="text-gray-300" />
+                                            <span className="text-[#17cf54] font-black">{category}</span>
+                                        </>
+                                    )}
                                 </nav>
-                                <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
-                                <p className="text-xs font-bold text-gray-500">{loading ? 'Recherche...' : `${total} produits trouvés`}</p>
-                                {category && (
-                                    <span className="bg-[#17cf54]/10 text-[#17cf54] px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest">
-                                        {category}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-black text-gray-400">
+                                        {loading ? '...' : `${total}`}
                                     </span>
-                                )}
+                                    <span className="text-xs font-bold text-gray-500">
+                                        {total === 1 ? 'produit' : 'produits'}
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <select 
-                                    value={sort}
-                                    onChange={handleSortChange}
-                                    className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-[#17cf54]"
-                                >
-                                    <option value="-createdAt">Plus récents</option>
-                                    <option value="price">Prix croissant</option>
-                                    <option value="-price">Prix décroissant</option>
-                                    <option value="-salesCount">Les plus populaires</option>
-                                </select>
+
+                            {/* Tri et Filtres */}
+                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                                <div className="flex flex-wrap gap-2">
+                                    {(category || search) && (
+                                        <button 
+                                            onClick={clearFilters}
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors"
+                                        >
+                                            <X size={14} />
+                                            Réinitialiser les filtres
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-500">Trier par:</span>
+                                    <select 
+                                        value={sort}
+                                        onChange={handleSortChange}
+                                        className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold text-gray-700 outline-none focus:ring-2 focus:ring-[#17cf54] focus:border-transparent transition-all"
+                                    >
+                                        <option value="-createdAt">Plus récents</option>
+                                        <option value="-viewCount">Les plus populaires</option>
+                                        <option value="price">Prix: Bas → Haut</option>
+                                        <option value="-price">Prix: Haut → Bas</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -247,8 +268,8 @@ export default function Products() {
                                                 </div>
                                             )}
                                             <button 
-                                                onClick={(e) => handleAddToCart(e, item._id)}
-                                                disabled={addingToCart === item._id}
+                                                onClick={(e) => handleAddToCart(e, item.id)}
+                                                disabled={addingToCart === item.id}
                                                 className="absolute bottom-6 right-6 bg-white text-[#17cf54] p-4 rounded-[1.25rem] shadow-xl hover:bg-[#17cf54] hover:text-white transition-all transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 duration-300 disabled:opacity-75"
                                             >
                                                 {addingToCart === item._id ? <Loader2 size={22} className="animate-spin" /> : <ShoppingCart size={22} />}
@@ -268,17 +289,50 @@ export default function Products() {
                                     </Link>
                                 ))
                             ) : (
-                                <div className="col-span-full py-20 text-center space-y-4 bg-gray-50 rounded-[3rem] border-2 border-dashed border-gray-100">
-                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto text-gray-300 shadow-sm">
-                                        <Search size={32} />
+                                <div className="col-span-full py-24 text-center space-y-6">
+                                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto text-gray-300 shadow-sm">
+                                        <Search size={40} />
                                     </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-gray-900">Aucun produit trouvé</h3>
-                                        <p className="text-sm font-medium text-gray-500">Essayez d'ajuster vos filtres ou votre recherche.</p>
+                                    <div className="space-y-2">
+                                        {search ? (
+                                            <>
+                                                <h3 className="text-2xl font-black text-gray-900">Aucun résultat pour "{search}"</h3>
+                                                <p className="text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                                                    Essayez une autre recherche ou explorez nos catégories.
+                                                </p>
+                                            </>
+                                        ) : category ? (
+                                            <>
+                                                <h3 className="text-2xl font-black text-gray-900">Aucun produit dans "{category}"</h3>
+                                                <p className="text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                                                    Cette catégorie est vide pour le moment. Explorez d'autres catégories.
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <h3 className="text-2xl font-black text-gray-900">Marché vide</h3>
+                                                <p className="text-sm font-medium text-gray-500 max-w-sm mx-auto">
+                                                    Aucun produit n'est disponible pour le moment. Revenez bientôt!
+                                                </p>
+                                            </>
+                                        )}
                                     </div>
-                                    <button onClick={clearFilters} className="px-8 py-3 bg-white text-gray-900 border border-gray-200 rounded-2xl font-black text-xs hover:bg-gray-50 transition-all">
-                                        Tout afficher
-                                    </button>
+                                    <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                                        {(category || search) && (
+                                            <button 
+                                                onClick={clearFilters}
+                                                className="px-8 py-3 bg-[#17cf54] text-white rounded-2xl font-black text-sm hover:bg-[#12a643] transition-all shadow-lg shadow-[#17cf54]/20"
+                                            >
+                                                Réinitialiser les filtres
+                                            </button>
+                                        )}
+                                        <Link 
+                                            to="/"
+                                            className="px-8 py-3 bg-gray-100 text-gray-900 rounded-2xl font-black text-sm hover:bg-gray-200 transition-all"
+                                        >
+                                            Retour à l'accueil
+                                        </Link>
+                                    </div>
                                 </div>
                             )}
                         </div>

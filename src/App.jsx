@@ -28,6 +28,7 @@ import Wishlist     from './pages/client/Wishlist';
 import MyReviews    from './pages/client/MyReviews';
 import MyDisputes   from './pages/client/MyDisputes';
 import MyRefunds    from './pages/client/MyRefunds';
+import Notifications from './pages/Notifications';
 
 // Pages vendeur
 import VendorLayout    from './layouts/VendorLayout';
@@ -41,6 +42,7 @@ const VendorSettings = lazy(() => import('./pages/vendor/Settings'));
 const VendorManageShop = lazy(() => import('./pages/vendor/ManageShop'));
 import VendorReviews   from './pages/vendor/Reviews';
 import VendorPromotions from './pages/vendor/Promotions';
+import VendorPromoCodes from './pages/vendor/PromoCodes';
 import VendorWallet    from './pages/vendor/Wallet';
 import VendorAnnouncements from './pages/vendor/Announcements';
 
@@ -73,6 +75,7 @@ export default function App() {
         <Route path="/my-reviews"    element={<ProtectedRoute><PageWrapper><MyReviews /></PageWrapper></ProtectedRoute>} />
         <Route path="/my-disputes"   element={<ProtectedRoute><PageWrapper><MyDisputes /></PageWrapper></ProtectedRoute>} />
         <Route path="/my-refunds"    element={<ProtectedRoute><PageWrapper><MyRefunds /></PageWrapper></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><PageWrapper><Notifications /></PageWrapper></ProtectedRoute>} />
 
         {/* ── ESPACE VENDEUR ────────────────────────────────────── */}
         <Route path="/vendor/pending-approval" element={<ProtectedRoute roles={['vendor']}><PageWrapper><PendingApproval /></PageWrapper></ProtectedRoute>} />
@@ -88,6 +91,7 @@ export default function App() {
           <Route path="messages/:id" element={<Messages />} />
           <Route path="reviews"   element={<VendorReviews />} />
           <Route path="promotions" element={<VendorPromotions />} />
+          <Route path="promo-codes" element={<VendorPromoCodes />} />
           <Route path="wallet"      element={<VendorWallet />} />
           <Route path="announcements" element={<VendorAnnouncements />} />
           <Route path="settings" element={<VendorSettings />} />

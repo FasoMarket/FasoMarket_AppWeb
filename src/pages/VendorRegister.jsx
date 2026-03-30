@@ -60,25 +60,6 @@ export default function VendorRegister() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans">
-            {/* Header */}
-            <header className="px-6 py-4 flex justify-between items-center max-w-[1400px] w-full mx-auto bg-white/50 backdrop-blur-sm z-50">
-                <Link to="/" className="flex items-center gap-2">
-                    <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
-                        <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                            <path d="M2 17L12 22L22 17" />
-                            <path d="M2 12L12 17L22 12" />
-                        </svg>
-                    </div>
-                    <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
-                </Link>
-                <div className="flex items-center gap-6">
-                    <Link to="/login" className="bg-[#e8faee] text-[#17cf54] px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#d1f5db] transition-colors">
-                        Se connecter
-                    </Link>
-                </div>
-            </header>
-
             <main className="flex-1 flex items-center justify-center p-4 sm:p-8 lg:p-12">
                 <div className="max-w-[1100px] w-full bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200/50 flex flex-col lg:flex-row overflow-hidden min-h-[700px] border border-gray-100">
 

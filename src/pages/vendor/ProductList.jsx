@@ -184,13 +184,13 @@ export default function ProductList() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden shrink-0 border border-slate-200">
-                        <img src={product.images?.[0] || product.image || '/placeholder.png'} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={product.images?.[0] || product.imageUrl || '/placeholder.png'} alt={product.name} className="w-full h-full object-cover" />
                       </div>
                       <span className="font-bold text-slate-900 group-hover:text-primary transition-colors">{product.name}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-slate-600 font-medium italic">{product.category}</td>
-                  <td className="px-6 py-4 font-bold text-slate-900">{product.price.toLocaleString()} FCFA</td>
+                  <td className="px-6 py-4 font-bold text-slate-900">{product.price?.toLocaleString() || '0'} FCFA</td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "font-black text-xs uppercase",

@@ -55,45 +55,6 @@ export default function Stores() {
 
     return (
         <div className="min-h-screen bg-[#fcfdfc] font-sans">
-            {/* Header / Navigation placeholder */}
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-20 gap-8">
-                        <Link to="/" className="flex items-center gap-2 shrink-0">
-                            <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-                        </Link>
-                        <div className="flex-1 max-w-xl relative hidden md:block">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Trouver une boutique, un artisan..."
-                                className="w-full pl-12 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
-                            />
-                        </div>
-                        <div className="flex items-center gap-4">
-                            {authService.isLoggedIn() && (
-                                <Link to="/messages" className="p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">
-                                    <Mail size={22} />
-                                </Link>
-                            )}
-                            
-                            <Link to="/login" className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all">
-                                Connexion
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="mb-12">
                     <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none mb-4">

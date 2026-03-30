@@ -28,7 +28,26 @@ export default function MyOrders() {
         const fetchOrders = async () => {
             try {
                 const res = await orderService.getMyOrders();
-                setOrders(res.data);
+                console.log('📦 Full response:', res);
+                console.log('📦 res.data:', res.data);
+                
+                // La réponse du backend est: { success: true, data: { orders: [...], pagination: {...} } }
+                // Axios enveloppe cela dans res.data
+                let ordersArray = [];
+                
+                if (res.data?.data?.orders && Array.isArray(res.data.data.orders)) {
+                    // Format: { success, data: { orders: [...], pagination: {...} } }
+                    ordersArray = res.data.data.orders;
+                } else if (res.data?.orders && Array.isArray(res.data.orders)) {
+                    // Format: { orders: [...], pagination: {...} }
+                    ordersArray = res.data.orders;
+                } else if (Array.isArray(res.data)) {
+                    // Format: [...]
+                    ordersArray = res.data;
+                }
+                
+                console.log('📦 Orders extracted:', ordersArray);
+                setOrders(ordersArray);
             } catch (err) {
                 console.error('Erreur chargement commandes:', err);
                 setError('Impossible de charger vos commandes.');
@@ -80,31 +99,6 @@ export default function MyOrders() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] font-sans">
-            {/* Header / Navbar */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 py-4 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center">
-                        <Link to="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-[#16c44f] rounded-lg flex items-center justify-center p-1.5 shadow-lg shadow-[#16c44f]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
-                        </Link>
-                        <div className="flex items-center gap-6">
-                            <Link to="/products" className="text-xs font-black text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors">Produits</Link>
-                            <Link to="/cart" className="text-xs font-black text-gray-400 hover:text-gray-900 uppercase tracking-widest transition-colors">Panier</Link>
-                            <div className="w-10 h-10 bg-[#16c44f]/10 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-black text-[#16c44f]">HT</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="max-w-5xl mx-auto px-4 py-12">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                     <div>
@@ -120,7 +114,7 @@ export default function MyOrders() {
                     </div>
                 )}
 
-                {orders.length === 0 ? (
+                {!Array.isArray(orders) || orders.length === 0 ? (
                     <div className="bg-white rounded-[3rem] p-20 text-center border border-gray-100 shadow-sm">
                         <div className="w-24 h-24 bg-gray-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8">
                             <ShoppingBag size={40} className="text-gray-200" />
@@ -136,7 +130,7 @@ export default function MyOrders() {
                     </div>
                 ) : (
                     <div className="space-y-6">
-                        {orders.map((order) => {
+                        {Array.isArray(orders) && orders.map((order) => {
                             const status = getStatusStyle(order.orderStatus);
                             return (
                                 <Link 

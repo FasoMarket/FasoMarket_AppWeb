@@ -31,9 +31,9 @@ export default function VendorWallet() {
   useEffect(() => {
     Promise.all([relationService.getMyWallet(), relationService.getMyPayouts()])
       .then(([w, p]) => {
-        const data = w.data.wallet;
+        const data = w.data.data || w.data.wallet;
         setWallet(data);
-        setPayments(p.data.payouts || []);
+        setPayments(p.data.payouts || p.data.data || []);
         if (data?.paymentInfo) setPayInfo(data.paymentInfo);
       })
       .finally(() => setLoading(false));

@@ -180,7 +180,7 @@ export default function Dashboard() {
                       <span className="text-xs font-medium text-slate-500">{order.items?.length || 0} items</span>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm font-bold text-slate-900">{order.vendorTotal?.toLocaleString() || order.totalAmount?.toLocaleString()} FCFA</p>
+                      <p className="text-sm font-bold text-slate-900">{(order.totalPrice || 0).toLocaleString()} FCFA</p>
                     </td>
                     <td className="px-6 py-4">
                       <Link to={`/vendor/orders/${order._id}`} className="text-primary hover:bg-primary/10 p-2 rounded-lg inline-block transition-all">

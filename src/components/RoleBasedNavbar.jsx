@@ -1,10 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LogOut, User, Store, LayoutDashboard, Menu, X } from 'lucide-react';
+import { LogOut, User, Store, LayoutDashboard, Menu, X, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
+import { useCart } from '../contexts/CartContext';
 
 export default function RoleBasedNavbar() {
   const { user, isAuthenticated, logout } = useAuth();
+  const { cartCount } = useCart();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -34,6 +36,7 @@ export default function RoleBasedNavbar() {
       { label: 'Produits', href: '/products' },
       { label: 'Mes Commandes', href: '/my-orders' },
       { label: 'Favoris', href: '/wishlist' },
+      { label: 'Mes Avis', href: '/my-reviews' },
     ];
   };
 
@@ -68,6 +71,19 @@ export default function RoleBasedNavbar() {
           <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <>
+                {/* Cart Icon */}
+                <Link
+                  to="/cart"
+                  className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ShoppingCart size={20} className="text-gray-700" />
+                  {cartCount > 0 && (
+                    <span className="absolute top-0 right-0 bg-primary text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {cartCount}
+                    </span>
+                  )}
+                </Link>
+
                 {/* User Info */}
                 <div className="hidden sm:flex items-center gap-3">
                   <div className="text-right">
@@ -93,6 +109,13 @@ export default function RoleBasedNavbar() {
                     >
                       <User size={18} />
                       Mon Profil
+                    </Link>
+                    <Link
+                      to="/notifications"
+                      className="flex items-center gap-2 px-4 py-3 text-gray-700 hover:bg-gray-50 border-b border-gray-200"
+                    >
+                      <ShoppingCart size={18} />
+                      Notifications
                     </Link>
                     {user?.role === 'vendor' && (
                       <Link

@@ -8,7 +8,6 @@ import {
     ShoppingBag, 
     ArrowRight,
     Search,
-    User,
     CheckCircle2,
     Truck,
     Loader2,
@@ -100,30 +99,6 @@ export default function Cart() {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] font-sans">
-            {/* Header */}
-            <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 py-4 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center gap-8">
-                        <Link to="/" className="flex items-center gap-2 shrink-0">
-                            <div className="w-8 h-8 bg-[#16c44f] rounded-lg flex items-center justify-center p-1.5 shadow-lg shadow-[#16c44f]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-xl font-black tracking-tight text-gray-900">FasoMarket</span>
-                        </Link>
-
-                        <div className="flex items-center gap-5">
-                            <Link to="/profile" className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-100 hover:text-[#16c44f] transition-colors">
-                                <User size={20} />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Breadcrumb */}
                 <nav className="flex items-center gap-2 text-xs font-black text-gray-400 uppercase tracking-widest mb-10">

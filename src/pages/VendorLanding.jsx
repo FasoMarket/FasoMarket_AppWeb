@@ -13,27 +13,6 @@ import {
 export default function VendorLanding() {
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
-                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                  <path d="M2 17L12 22L22 17" />
-                  <path d="M2 12L12 17L22 12" />
-                </svg>
-              </div>
-              <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-            </Link>
-            <Link to="/login" className="px-6 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold hover:bg-black transition-all">
-              Connexion
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero */}
         <section className="py-20 space-y-8">

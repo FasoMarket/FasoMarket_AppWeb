@@ -41,6 +41,7 @@ const vendorNavigation = [
   { name: 'Ma boutique', href: '/vendor/store', icon: Store },
   { name: 'Produits', href: '/vendor/products', icon: Package },
   { name: 'Promotions', href: '/vendor/promotions', icon: Percent },
+  { name: 'Codes Promo', href: '/vendor/promo-codes', icon: Tag },
   { name: 'Commandes', href: '/vendor/orders', icon: ShoppingBag },
   { name: 'Avis clients', href: '/vendor/reviews', icon: Star },
   { name: 'Mon Wallet',  href: '/vendor/wallet',    icon: Wallet },
