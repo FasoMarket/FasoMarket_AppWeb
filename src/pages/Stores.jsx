@@ -25,7 +25,8 @@ export default function Stores() {
             setLoading(true);
             try {
                 const response = await storeService.getAll();
-                setStores(response.data.stores || response.data);
+                const data = response.data?.data || response.data?.stores || response.data;
+                setStores(Array.isArray(data) ? data : []);
             } catch (err) {
                 console.error('Erreur chargement boutiques:', err);
                 setError('Impossible de récupérer la liste des boutiques.');

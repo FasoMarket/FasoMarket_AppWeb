@@ -15,6 +15,7 @@ import { authService } from '../services/authService';
 import { productService } from '../services/productService';
 import { cartService } from '../services/cartService';
 import { useToast } from '../contexts/ToastContext';
+import { useProductUpdates } from '../hooks/useProductUpdates';
 
 export default function Products() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -28,6 +29,24 @@ export default function Products() {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const sort = searchParams.get('sort') || '-createdAt';
+
+    // Handle real-time product updates
+    useProductUpdates(
+        (updatedProduct) => {
+            setProducts(prev => {
+                const index = prev.findIndex(p => p._id === updatedProduct._id);
+                if (index !== -1) {
+                    const newProducts = [...prev];
+                    newProducts[index] = updatedProduct;
+                    return newProducts;
+                }
+                return prev;
+            });
+        },
+        (deletedProductId) => {
+            setProducts(prev => prev.filter(p => p._id !== deletedProductId));
+        }
+    );
 
     useEffect(() => {
         const loadPageData = async () => {

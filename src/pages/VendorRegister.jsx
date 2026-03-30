@@ -47,7 +47,7 @@ export default function VendorRegister() {
                 phone: formData.phone,
                 password: formData.password,
                 role: 'vendor',
-                storeName: formData.storeName
+                shopName: formData.storeName
             });
             authService.saveSession(res.data.token, res.data.user);
             navigate('/vendor');

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { authService } from '../services/authService';
 import { cartService } from '../services/cartService';
+import { getAdminUrl } from '../config/urls';
 
 export default function ClientRegister() {
     const navigate = useNavigate();
@@ -50,7 +51,16 @@ export default function ClientRegister() {
             });
             authService.saveSession(res.data.token, res.data.user);
             try { await cartService.syncCart(); } catch(e) {}
-            navigate(res.data.user.role === 'vendor' ? '/vendor' : '/');
+            
+            // Redirection selon le rôle
+            const role = res.data.user.role;
+            if (role === 'vendor') {
+                navigate('/vendor/dashboard');
+            } else if (role === 'admin') {
+                window.location.href = getAdminUrl();
+            } else {
+                navigate('/');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Erreur lors de l\'inscription');
         } finally {

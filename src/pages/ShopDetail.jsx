@@ -39,12 +39,16 @@ export default function ShopDetail() {
             setError(null);
             try {
                 const [storeRes, productsRes] = await Promise.all([
-                    storeService.getBySlug(id), // Identifier can be ID or Slug
+                    storeService.getBySlug(id),
                     storeService.getProducts(id, { limit: 20 })
                 ]);
                 
-                setShop(storeRes.data.store || storeRes.data);
-                setProducts(productsRes.data.products || productsRes.data);
+                // Robust extraction from standardized API response: { success, data, message }
+                const shopData = storeRes.data?.data || storeRes.data?.store || storeRes.data;
+                const productsData = productsRes.data?.data || productsRes.data?.products || productsRes.data;
+
+                setShop(shopData);
+                setProducts(Array.isArray(productsData) ? productsData : (productsData?.products || []));
             } catch (err) {
                 console.error('Erreur chargement boutique:', err);
                 setError('Impossible de charger les détails de la boutique.');

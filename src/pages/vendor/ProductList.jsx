@@ -11,44 +11,78 @@ import {
   X,
   AlertTriangle,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Store
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { productService } from '../../services/productService';
 import { vendorService } from '../../services/vendorService';
 import Modal from '../../components/Modal';
 import ConfirmModal from '../../components/ConfirmModal';
+import NoShopState from '../../components/NoShopState';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useProductUpdates } from '../../hooks/useProductUpdates';
 
 export default function ProductList() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [hasNoStore, setHasNoStore] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productToDelete, setProductToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  // Handle real-time product updates
+  useProductUpdates(
+    (updatedProduct) => {
+      setProducts(prev => {
+        const index = prev.findIndex(p => p._id === updatedProduct._id);
+        if (index !== -1) {
+          const newProducts = [...prev];
+          newProducts[index] = updatedProduct;
+          return newProducts;
+        }
+        return prev;
+      });
+      showToast('Produit mis à jour en temps réel', 'info');
+    },
+    (deletedProductId) => {
+      setProducts(prev => prev.filter(p => p._id !== deletedProductId));
+      showToast('Produit supprimé en temps réel', 'info');
+    }
+  );
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      // We need to know which products belong to this vendor.
-      // Easiest is to get the vendor's stats which now includes storeId
-      const statsRes = await vendorService.getStats();
-      const storeId = statsRes.data.data.store?.id;
+      setHasNoStore(false);
+      // Get vendor's store directly from user context
+      const storeRes = await vendorService.getMyStore();
+      const storeData = storeRes.data?.data || storeRes.data;
+      const storeId = storeData?._id || storeData?.id;
       
       if (storeId) {
         const res = await productService.getAll({ store: storeId, limit: 100 });
-        setProducts(res.data.data);
+        setProducts(res.data.data || res.data || []);
+      } else {
+        setHasNoStore(true);
       }
     } catch (err) {
       console.error('Erreur chargement produits:', err);
-      setError('Impossible de charger vos produits.');
+      // Vérifier si c'est une erreur 404 (pas de boutique)
+      if (err.response?.status === 404) {
+        setHasNoStore(true);
+      } else {
+        setError('Impossible de charger vos produits.');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,6 +113,21 @@ export default function ProductList() {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  // Afficher l'état "Pas de boutique" si le vendeur n'a pas encore de boutique
+  if (hasNoStore) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 italic uppercase">Mes Produits</h1>
+            <p className="text-slate-500 font-medium">Gérez votre catalogue de produits</p>
+          </div>
+        </div>
+        <NoShopState variant="compact" />
       </div>
     );
   }

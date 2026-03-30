@@ -13,22 +13,33 @@ import {
   Loader2,
   AlertCircle,
   Star,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  Lock
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { vendorAdvancedService } from '../../services/vendorAdvancedService';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState(null);
   const [lowStockProducts, setLowStockProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
 
+  const isVendorApproved = user?.isVendorApproved;
+
   useEffect(() => {
+    if (!isVendorApproved) {
+      setLoading(false);
+      return;
+    }
+
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
@@ -50,7 +61,22 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [isVendorApproved]);
+
+  // Restricted view for unapproved vendors
+  if (!isVendorApproved) {
+    return (
+      <div className="space-y-6">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+          <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 animate-pulse" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-amber-900">Compte en attente d'approbation</p>
+            <p className="text-xs text-amber-700 mt-0.5">Délai: 24-48 heures • Email de confirmation à venir</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const getStatCards = () => [
     { name: 'Chiffre d\'Affaires', value: overview?.grossRevenue?.toLocaleString() || 0, unit: 'CFA', trend: 'Brut', trendType: 'up', icon: Banknote, color: 'text-slate-400' },
@@ -79,14 +105,20 @@ export default function Dashboard() {
       {/* Low Stock Alert */}
       {lowStockProducts.length > 0 && (
         <div className="p-4 bg-amber-50 border border-amber-100 rounded-3xl flex items-center justify-between gap-4 animate-pulse">
-          <div className="flex items-center gap-3 text-amber-800">
-            <AlertCircle size={24} />
-            <div>
-              <p className="font-bold">Alerte Stocks ({lowStockProducts.length} produits)</p>
-              <p className="text-xs opacity-80">Certains produits sont presque épuisés. Pensez à réapprovisionner.</p>
+          <div className="flex items-center gap-3 text-amber-800 flex-1">
+            <AlertCircle size={24} className="flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-bold">⚠️ Alerte Stocks ({lowStockProducts.length} produits)</p>
+              <p className="text-xs opacity-80 mt-1">
+                {lowStockProducts.length === 1 
+                  ? `"${lowStockProducts[0]?.name}" est presque épuisé (${lowStockProducts[0]?.stock} unités restantes).`
+                  : `${lowStockProducts.map(p => `"${p?.name}" (${p?.stock} unités)`).join(', ')} sont presque épuisés.`
+                }
+              </p>
+              <p className="text-xs opacity-70 mt-1">Pensez à réapprovisionner rapidement.</p>
             </div>
           </div>
-          <Link to="/vendor/products" className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold whitespace-nowrap">
+          <Link to="/vendor/products" className="px-4 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold whitespace-nowrap flex-shrink-0">
             Gérer le stock
           </Link>
         </div>

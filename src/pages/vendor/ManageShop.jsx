@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Store, 
   MapPin, 
@@ -13,13 +13,17 @@ import {
   Save,
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  ArrowRight,
+  Plus
 } from 'lucide-react';
 import { vendorAdvancedService } from '../../services/vendorAdvancedService';
 import { storeService } from '../../services/storeService';
 import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../utils/cn';
+import NoShopState from '../../components/NoShopState';
 
 export default function ManageShop() {
   const navigate = useNavigate();
@@ -27,7 +31,11 @@ export default function ManageShop() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [store, setStore] = useState(null);
+  const [hasNoStore, setHasNoStore] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [justCreated, setJustCreated] = useState(false);
   const [previews, setPreviews] = useState({ logo: null, banner: null });
+  const formRef = useRef(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -49,8 +57,19 @@ export default function ManageShop() {
   const fetchStore = async () => {
     try {
       const res = await vendorAdvancedService.getMyStore();
-      const s = res.data;
-      setStore(s);
+      // La réponse API est: { success, message, data: { store } }
+      const s = res.data?.data || res.data;
+      
+      if (!s || (!s._id && !s.id)) {
+        setStore(null);
+        setHasNoStore(true);
+        return;
+      }
+      
+      // Le backend peut retourner `id` ou `_id` selon l'endpoint
+      const storeWithId = { ...s, _id: s._id || s.id };
+      setStore(storeWithId);
+      setHasNoStore(false);
       setFormData({
         name: s.name || '',
         description: s.description || '',
@@ -65,7 +84,14 @@ export default function ManageShop() {
       });
       setPreviews({ logo: s.logo, banner: s.banner });
     } catch (err) {
-      showToast('Erreur chargement boutique', 'error');
+      // Si la boutique n'existe pas (404), afficher l'état de création
+      if (err.response?.status === 404) {
+        setStore(null);
+        setHasNoStore(true);
+      } else {
+        console.error('Erreur chargement boutique:', err);
+        showToast('Erreur chargement boutique', 'error');
+      }
     } finally {
       setLoading(false);
     }
@@ -100,14 +126,59 @@ export default function ManageShop() {
       if (formData.logo instanceof File) data.append('logo', formData.logo);
       if (formData.banner instanceof File) data.append('banner', formData.banner);
 
-      await storeService.update(store._id, data);
-      showToast('Boutique mise à jour avec succès', 'success');
-      fetchStore();
+      if (store?._id) {
+        // Update existing store
+        await storeService.update(store._id, data);
+        showToast('Boutique mise à jour avec succès', 'success');
+        fetchStore();
+      } else {
+        // Create new store
+        const res = await storeService.create(data);
+        const storeData = res.data?.data || res.data;
+        // Normaliser l'ID (backend peut retourner `id` ou `_id`)
+        const newStore = { ...storeData, _id: storeData._id || storeData.id };
+        
+        // Mettre à jour l'état avec la nouvelle boutique
+        setStore(newStore);
+        setHasNoStore(false);
+        setShowCreateForm(false);
+        setJustCreated(true);
+        
+        // Mettre à jour les previews avec les données du serveur
+        setPreviews({ 
+          logo: newStore?.logo || null, 
+          banner: newStore?.banner || null 
+        });
+        
+        // Mettre à jour le formData avec les données réelles
+        setFormData({
+          name: newStore?.name || '',
+          description: newStore?.description || '',
+          phone: newStore?.phone || '',
+          address: newStore?.address || '',
+          socialLinks: {
+            facebook: newStore?.socialLinks?.facebook || '',
+            instagram: newStore?.socialLinks?.instagram || '',
+            twitter: newStore?.socialLinks?.twitter || '',
+            youtube: newStore?.socialLinks?.youtube || ''
+          }
+        });
+        
+        showToast('🎉 Boutique créée avec succès !', 'success');
+      }
     } catch (err) {
-      showToast('Erreur lors de la mise à jour', 'error');
+      console.error('Erreur:', err);
+      showToast(err.response?.data?.message || 'Erreur lors de la sauvegarde', 'error');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleStartCreation = () => {
+    setShowCreateForm(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   if (loading) return (
@@ -116,20 +187,121 @@ export default function ManageShop() {
     </div>
   );
 
+  // Afficher l'état "Pas de boutique" si le vendeur n'a pas encore de boutique
+  if (hasNoStore && !showCreateForm) {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500">
+        <NoShopState variant="full" onCreateClick={handleStartCreation} />
+      </div>
+    );
+  }
+
+  // Écran de succès après création de la boutique
+  if (justCreated && store) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center animate-in fade-in zoom-in-95 duration-500">
+        <div className="max-w-lg w-full text-center space-y-8">
+          {/* Success Animation */}
+          <div className="relative">
+            <div className="w-32 h-32 mx-auto rounded-[2rem] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30 animate-bounce">
+              <CheckCircle2 className="w-16 h-16 text-white" />
+            </div>
+            <div className="absolute -top-2 -right-2 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center animate-pulse">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+          </div>
+
+          {/* Success Message */}
+          <div className="space-y-3">
+            <h1 className="text-4xl font-black text-slate-900">
+              🎉 Félicitations !
+            </h1>
+            <p className="text-xl text-slate-600 font-medium">
+              Votre boutique <span className="font-black text-primary">"{store.name}"</span> est créée !
+            </p>
+            <p className="text-slate-400">
+              Vous pouvez maintenant ajouter des produits et commencer à vendre.
+            </p>
+          </div>
+
+          {/* Store Preview Card */}
+          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-6 text-left">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center overflow-hidden">
+                {store.logo ? (
+                  <img src={store.logo} alt="Logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Store className="w-8 h-8 text-primary" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-black text-slate-900 text-lg">{store.name}</h3>
+                {store.address && <p className="text-sm text-slate-500 flex items-center gap-1"><MapPin size={14} /> {store.address}</p>}
+              </div>
+            </div>
+            {store.description && (
+              <p className="text-sm text-slate-500 italic border-t border-slate-50 pt-4">{store.description}</p>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => navigate('/vendor/products/new')}
+              className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-primary text-white rounded-2xl font-black hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/25"
+            >
+              <Plus size={20} />
+              Ajouter mon premier produit
+            </button>
+            <button
+              onClick={() => setJustCreated(false)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+            >
+              <Save size={18} />
+              Personnaliser ma boutique
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Formulaire de création/édition
+  const isCreating = !store?._id;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div ref={formRef} className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+      {/* Header avec indication création/édition */}
+      {isCreating && (
+        <div className="bg-gradient-to-r from-primary/10 to-amber-50 p-6 rounded-[2rem] border border-primary/20 mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
+              <Sparkles className="w-7 h-7 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">Créez votre boutique</h2>
+              <p className="text-slate-500">Remplissez les informations ci-dessous pour lancer votre activité</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 italic uppercase">Identité Visuelle</h1>
-          <p className="text-slate-500 font-medium">Personnalisez l'image de marque de votre boutique.</p>
+          <h1 className="text-3xl font-black text-slate-900 italic uppercase">
+            {isCreating ? 'Nouvelle Boutique' : 'Identité Visuelle'}
+          </h1>
+          <p className="text-slate-500 font-medium">
+            {isCreating ? 'Configurez votre boutique pour commencer à vendre.' : 'Personnalisez l\'image de marque de votre boutique.'}
+          </p>
         </div>
         <button 
           onClick={handleSubmit}
-          disabled={saving}
-          className="bg-primary text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20 disabled:opacity-50"
+          disabled={saving || !formData.name}
+          className="bg-primary text-white px-8 py-4 rounded-2xl font-black flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
-          Enregistrer les modifications
+          {saving ? <Loader2 size={20} className="animate-spin" /> : isCreating ? <Plus size={20} /> : <Save size={20} />}
+          {isCreating ? 'Créer ma boutique' : 'Enregistrer les modifications'}
         </button>
       </div>
 
@@ -273,15 +445,22 @@ export default function ManageShop() {
               </div>
               <div>
                 <h4 className="font-black text-slate-900 text-sm italic italic uppercase">Visibilité</h4>
-                <p className="text-[10px] text-slate-500 font-bold">Votre boutique est visible par tous les clients de FasoMarket.</p>
+                <p className="text-[10px] text-slate-500 font-bold">
+                  {isCreating 
+                    ? 'Votre boutique sera visible dès sa création.'
+                    : 'Votre boutique est visible par tous les clients de FasoMarket.'
+                  }
+                </p>
               </div>
             </div>
-            <button 
-              onClick={() => window.open(`/shop/${store?.slug}`, '_blank')}
-              className="w-full py-3 bg-white border border-primary/20 text-primary rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
-            >
-              Voir ma boutique publique
-            </button>
+            {!isCreating && (
+              <button 
+                onClick={() => window.open(`/shop/${store?.slug}`, '_blank')}
+                className="w-full py-3 bg-white border border-primary/20 text-primary rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary hover:text-white transition-all"
+              >
+                Voir ma boutique publique
+              </button>
+            )}
           </div>
         </div>
       </div>

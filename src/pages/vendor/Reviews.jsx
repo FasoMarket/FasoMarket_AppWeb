@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Star, MessageSquare } from 'lucide-react';
 import { vendorAdvancedService } from '../../services/vendorAdvancedService';
 import { useToast } from '../../contexts/ToastContext';
+import { getImageUrl } from '../../utils/imageUrl';
 
 export default function VendorReviews() {
   const [reviews,  setReviews]  = useState([]);
@@ -15,6 +16,8 @@ export default function VendorReviews() {
       vendorAdvancedService.getReviews(),
       vendorAdvancedService.getReviewStats(),
     ]).then(([revRes, statsRes]) => {
+      console.log('📝 Reviews response:', revRes);
+      console.log('📝 Stats response:', statsRes);
       setReviews(revRes.data.reviews || []);
       setStats(statsRes.data.stats);
     }).catch(err => {
@@ -100,7 +103,7 @@ export default function VendorReviews() {
                 
                 <div className="flex items-center gap-2 mt-2 p-2 bg-slate-50 rounded-lg">
                   {review.product?.images?.[0] && (
-                    <img src={review.product.images[0]} alt="" className="w-10 h-10 rounded object-cover" />
+                    <img src={getImageUrl(review.product.images[0])} alt="" className="w-10 h-10 rounded object-cover" />
                   )}
                   <p className="text-xs font-medium text-slate-600 truncate">
                     {review.product?.name || 'Produit supprimé'}

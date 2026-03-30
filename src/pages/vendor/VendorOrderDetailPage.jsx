@@ -34,7 +34,8 @@ export default function VendorOrderDetailPage() {
     try {
       setLoading(true);
       const res = await vendorAdvancedService.getOrderDetail(id);
-      setOrder(res.data.data || res.data); // Support both formats
+      const orderData = res.data?.data || res.data?.order || res.data;
+      setOrder(orderData);
     } catch (err) {
       console.error('Erreur chargement commande:', err);
       setError('Impossible de récupérer les détails de la commande.');

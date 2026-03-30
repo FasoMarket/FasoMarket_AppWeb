@@ -21,7 +21,7 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount(res.data.unreadCount || 0);
       }
     } catch (err) {
-      console.error('Erreur chargement notifications:', err);
+      if (import.meta.env.DEV) console.error('Erreur chargement notifications:', err);
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount(0);
       }
     } catch (err) {
-      console.error('Error marking all as read:', err);
+      if (import.meta.env.DEV) console.error('Error marking all as read:', err);
     }
   };
 
@@ -64,7 +64,7 @@ export const NotificationProvider = ({ children }) => {
         setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (err) {
-      console.error('Error marking one as read:', err);
+      if (import.meta.env.DEV) console.error('Error marking one as read:', err);
     }
   };
 
@@ -77,7 +77,7 @@ export const NotificationProvider = ({ children }) => {
         if (notif && !notif.isRead) setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (err) {
-      console.error('Error deleting notification:', err);
+      if (import.meta.env.DEV) console.error('Error deleting notification:', err);
     }
   };
 

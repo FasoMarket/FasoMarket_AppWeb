@@ -20,7 +20,7 @@ export const CartProvider = ({ children }) => {
                 localStorage.setItem('fasomarket_cart_cache', JSON.stringify(res.data));
             }
         } catch (err) {
-            console.error('Error fetching cart:', err);
+            if (import.meta.env.DEV) console.error('Error fetching cart:', err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -59,7 +59,7 @@ export const CartProvider = ({ children }) => {
             }
             return res.data;
         } catch (err) {
-            console.error('Error adding to cart:', err);
+            if (import.meta.env.DEV) console.error('Error adding to cart:', err);
             throw err;
         }
     };
@@ -72,7 +72,7 @@ export const CartProvider = ({ children }) => {
                 localStorage.setItem('fasomarket_cart_cache', JSON.stringify(res.data));
             }
         } catch (err) {
-            console.error('Error updating quantity:', err);
+            if (import.meta.env.DEV) console.error('Error updating quantity:', err);
         }
     };
 
@@ -84,7 +84,7 @@ export const CartProvider = ({ children }) => {
                 localStorage.setItem('fasomarket_cart_cache', JSON.stringify(res.data));
             }
         } catch (err) {
-            console.error('Error removing item:', err);
+            if (import.meta.env.DEV) console.error('Error removing item:', err);
         }
     };
 
@@ -95,7 +95,7 @@ export const CartProvider = ({ children }) => {
             setCart(emptyCart);
             localStorage.removeItem('fasomarket_cart_cache');
         } catch (err) {
-            console.error('Error clearing cart:', err);
+            if (import.meta.env.DEV) console.error('Error clearing cart:', err);
         }
     };
 

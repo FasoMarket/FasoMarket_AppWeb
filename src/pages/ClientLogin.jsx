@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Mail, Lock, Eye, ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/authService';
 import { cartService } from '../services/cartService';
+import { getAdminUrl } from '../config/urls';
 import loginBg from '../assets/login-bg.png';
 
 export default function ClientLogin() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,15 +22,19 @@ export default function ClientLogin() {
     setLoading(true);
     setError('');
     try {
-      const res = await authService.login({ email, password });
-      authService.saveSession(res.data.token, res.data.user);
+      const userData = await login(email, password);
 
       try { await cartService.syncCart(); } catch (e) {}
 
       // Redirection selon le rôle
-      const role = res.data.user.role;
-      if (role === 'admin')  navigate('/admin');
-      else if (role === 'vendor') navigate('/vendor');
+      const role = userData.role;
+      if (role === 'admin') {
+        window.location.href = getAdminUrl();
+      }
+      else if (role === 'vendor') {
+        // Si le vendor n'est pas approuvé, il sera redirigé par RoleBasedLayout
+        navigate('/vendor');
+      }
       else navigate(location.state?.from?.pathname || '/');
     } catch (err) {
       setError(err.response?.data?.message || 'Email ou mot de passe incorrect');

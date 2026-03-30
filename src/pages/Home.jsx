@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
-    Search,
-    ShoppingCart,
-    User as UserIcon,
     ChevronRight,
     Truck,
     ShieldCheck,
@@ -13,14 +10,13 @@ import {
     Shirt,
     Cpu,
     Loader2,
-    Mail,
     TrendingUp,
-    BarChart2
+    BarChart2,
+    ShoppingCart
 } from 'lucide-react';
 import { productService } from '../services/productService';
 import { storeService }   from '../services/storeService';
 import { authService }    from '../services/authService';
-import NotificationBell from '../components/NotificationBell';
 import { useCart }        from '../contexts/CartContext';
 import { relationService } from '../services/relationService';
 
@@ -107,74 +103,6 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-white">
-            {/* Header */}
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between items-center h-20 gap-8">
-                        {/* Logo */}
-                        <Link to="/" className="flex items-center gap-2 shrink-0">
-                            <div className="w-10 h-10 bg-[#17cf54] rounded-xl flex items-center justify-center p-2 shadow-lg shadow-[#17cf54]/20">
-                                <svg viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
-                                    <path d="M12 2L2 7L12 12L22 7L12 2Z" />
-                                    <path d="M2 17L12 22L22 17" />
-                                    <path d="M2 12L12 17L22 12" />
-                                </svg>
-                            </div>
-                            <span className="text-2xl font-black tracking-tight text-gray-900 hidden sm:block">FasoMarket</span>
-                        </Link>
-
-                        <nav className="hidden lg:flex items-center gap-12 text-sm font-bold text-gray-600">
-                            <Link to="/stores" className="hover:text-[#17cf54] transition-colors">Boutiques</Link>
-                            <Link to="/register-vendor" className="hover:text-[#17cf54] transition-colors">Devenir Vendeur</Link>
-                        </nav>
-
-                        {/* Search Bar */}
-                        <div className="flex-1 max-w-xl relative hidden md:block">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onKeyDown={handleSearch}
-                                placeholder="Rechercher des produits, artisans, boutiques..."
-                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#17cf54] focus:border-transparent outline-none transition-all text-sm font-medium"
-                            />
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                            <Link to="/cart" className="relative p-2.5 text-gray-600 hover:bg-gray-50 rounded-xl transition-colors group">
-                                <ShoppingCart size={22} className="group-hover:scale-110 transition-transform" />
-                                {cartCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-in zoom-in shadow-lg">
-                                        {cartCount}
-                                    </span>
-                                )}
-                            </Link>
-                            
-                            {user && (
-                                <NotificationBell />
-                            )}
-                            
-                            {user ? (
-                                <Link to={user.role === 'admin' ? '/admin' : user.role === 'vendor' ? '/vendor' : '/profile'} className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 hover:bg-white transition-all group">
-                                    <div className="w-8 h-8 bg-[#17cf54] rounded-full flex items-center justify-center text-white shadow-sm group-hover:scale-110 transition-transform">
-                                        {user.avatar ? <img src={user.avatar} className="w-full h-full object-cover rounded-full" /> : <UserIcon size={18} />}
-                                    </div>
-                                    <span className="text-sm font-bold text-gray-700 hidden lg:block">{user.name?.split(' ')[0] || 'Profil'}</span>
-                                </Link>
-                            ) : (
-                                <Link
-                                    to="/login"
-                                    className="px-6 py-3 bg-[#17cf54] text-white rounded-2xl text-sm font-bold hover:bg-[#12a643] transition-all shadow-lg shadow-[#17cf54]/20"
-                                >
-                                    Connexion
-                                </Link>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </header>
-
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-20">
 
                 {/* Hero Section */}
@@ -264,7 +192,12 @@ export default function Home() {
                             featuredProducts.map((item) => (
                                 <Link to={`/product/${item._id}`} key={item._id} className="group cursor-pointer space-y-4 block">
                                     <div className="aspect-square rounded-3xl overflow-hidden bg-gray-100 relative">
-                                        <img src={item.images?.[0] || item.image || item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        <img 
+                                            src={item.images?.[0] || item.image || item.img || 'https://placehold.co/400x400?text=Product'} 
+                                            alt={item.name} 
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                            onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
+                                        />
                                         <button 
                                             onClick={(e) => handleAddToCart(e, item._id)}
                                             disabled={addingToCart === item._id}
@@ -305,7 +238,12 @@ export default function Home() {
                                 featuredStores.map((store) => (
                                     <div key={store._id} className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-gray-200/20 space-y-6 border border-white">
                                         <div className="flex items-center gap-4">
-                                            <img src={store.logo || store.img || 'https://placehold.co/100x100?text=Logo'} alt={store.name} className="w-14 h-14 rounded-2xl object-cover bg-gray-50" />
+                                            <img 
+                                                src={store.logo || store.img || 'https://placehold.co/100x100?text=Logo'} 
+                                                alt={store.name} 
+                                                className="w-14 h-14 rounded-2xl object-cover bg-gray-50"
+                                                onError={(e) => { e.target.src = 'https://placehold.co/100x100?text=Logo'; }}
+                                            />
                                             <div>
                                                 <h3 className="font-bold text-gray-900">{store.name}</h3>
                                                 <div className="flex items-center gap-1 text-[#17cf54]">
@@ -357,8 +295,8 @@ export default function Home() {
                         <p className="text-lg text-gray-400 font-medium">Rejoignez FasoMarket et commencez à vendre vos créations à travers le pays dès aujourd'hui.</p>
                     </div>
 
-                    <div className="flex flex-wrap justify-center gap-6 relative z-10">
-                        <Link to="/register" className="px-10 py-5 bg-[#17cf54] text-white rounded-2xl font-black hover:bg-[#12a643] transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95">
+                    <div className="flex flex-wrap gap-6 relative z-10">
+                        <Link to="/vendre" className="px-10 py-5 bg-[#17cf54] text-white rounded-2xl font-black hover:bg-[#12a643] transition-all shadow-2xl shadow-[#17cf54]/30 active:scale-95">
                             Ouvrir ma boutique
                         </Link>
                     </div>

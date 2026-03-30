@@ -8,9 +8,9 @@ export const SocketProvider = ({ children }) => {
   const socketRef = useRef(null);
   const [isConnected,  setIsConnected]  = useState(false);
   const [onlineUsers,  setOnlineUsers]  = useState(new Set());
+  const token = authService.getToken();
 
   useEffect(() => {
-    const token = authService.getToken();
     if (!token) {
       if (socketRef.current) {
         socketRef.current.disconnect();
@@ -22,8 +22,12 @@ export const SocketProvider = ({ children }) => {
 
     if (socketRef.current) return; // Déjà connecté
 
+    const socketUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '')
+      : window.location.origin;
+
     socketRef.current = io(
-      window.location.origin,
+      socketUrl,
       {
         auth: { token },
         transports: ['polling', 'websocket'],
@@ -45,7 +49,7 @@ export const SocketProvider = ({ children }) => {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [authService.getToken()]);
+  }, [token]);
 
   return (
     <SocketContext.Provider value={{ socket: socketRef.current, isConnected, onlineUsers }}>

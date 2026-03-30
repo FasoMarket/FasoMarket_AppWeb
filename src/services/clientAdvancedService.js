@@ -36,7 +36,7 @@ export const clientAdvancedService = {
   getMyRefunds:       ()             => API.get('/refunds/my-refunds'),
 
   // Avis
-  createReview:       (data)         => API.post('/client-reviews', data),
+  createReview:       (data)         => API.post('/reviews', data),
   getMyReviews:       ()             => API.get('/reviews/my-reviews'),
   updateReview:       (id, data)     => API.put(`/reviews/${id}`, data),
   deleteReview:       (id)           => API.delete(`/reviews/${id}`),

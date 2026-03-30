@@ -4,6 +4,7 @@ import { vendorAdvancedService } from '../../services/vendorAdvancedService';
 import { useToast } from '../../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { usePromotionUpdates } from '../../hooks/usePromotionUpdates';
 
 export default function VendorPromotions() {
   const [promotions, setPromotions] = useState([]);
@@ -20,6 +21,22 @@ export default function VendorPromotions() {
     isActive: true
   });
 
+  // Handle real-time promotion updates
+  usePromotionUpdates(
+    (newPromotion) => {
+      setPromotions(prev => [newPromotion, ...prev]);
+      showToast('Nouvelle promotion créée en temps réel', 'info');
+    },
+    (updatedPromotion) => {
+      setPromotions(prev => prev.map(p => p._id === updatedPromotion._id ? updatedPromotion : p));
+      showToast('Promotion mise à jour en temps réel', 'info');
+    },
+    (deletedPromotionId) => {
+      setPromotions(prev => prev.filter(p => p._id !== deletedPromotionId));
+      showToast('Promotion supprimée en temps réel', 'info');
+    }
+  );
+
   useEffect(() => {
     loadPromotions();
   }, []);
@@ -27,7 +44,7 @@ export default function VendorPromotions() {
   const loadPromotions = async () => {
     try {
       const res = await vendorAdvancedService.getPromotions();
-      setPromotions(res.data.promotions || []);
+      setPromotions(res.data.data || []);
     } catch {
       showToast('Erreur chargement promotions', 'error');
     } finally {

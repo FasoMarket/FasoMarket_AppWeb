@@ -30,7 +30,20 @@ export const useMessages = (conversationId) => {
 
     const handleNewMessage = ({ message, conversationId: cid }) => {
       if (cid !== conversationId) return;
-      setMessages(prev => [...prev, message]);
+      
+      // Éviter les doublons - vérifier par ID ou par contenu similaire récent
+      setMessages(prev => {
+        const exists = prev.some(m => 
+          (m._id && m._id === message._id) ||
+          (m.id && m.id === message._id) ||
+          // Vérifier si même contenu + même expéditeur dans les 5 dernières secondes
+          (m.content === message.content && 
+           (m.sender?._id || m.sender?.id || m.sender) === (message.sender?._id || message.sender?.id || message.sender) &&
+           Math.abs(new Date(m.createdAt) - new Date(message.createdAt)) < 5000)
+        );
+        if (exists) return prev;
+        return [...prev, message];
+      });
     };
 
     const handleTypingStart = ({ userId, userName, conversationId: cid }) => {

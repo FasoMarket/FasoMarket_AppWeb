@@ -65,7 +65,7 @@ export const ThemeProvider = ({ children }) => {
       try {
         await settingsService.updateTheme(newTheme);
       } catch (err) {
-        console.error('Erreur sauvegarde thème:', err);
+        if (import.meta.env.DEV) console.error('Erreur sauvegarde thème:', err);
       }
     }
   };

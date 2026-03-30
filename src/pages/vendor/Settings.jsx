@@ -190,11 +190,13 @@ export default function VendorSettings() {
             <p className="text-slate-500 font-medium">Propriétaire de <span className="text-primary font-bold">{store?.name || 'Votre boutique'}</span></p>
             <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-4">
                <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest rounded-full border border-primary/10">
-                  <Shield size={12} /> {user?.vendorStatus === 'approved' ? 'Vendeur Vérifié' : 'En attente'}
+                  <Shield size={12} /> {user?.isVendorApproved ? 'Vendeur Vérifié' : 'En attente'}
                </div>
-               <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">
-                  <Store size={12} /> Boutique Active
-               </div>
+               {user?.isVendorApproved && (
+                 <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-full border border-blue-100">
+                    <Store size={12} /> Boutique Active
+                 </div>
+               )}
             </div>
           </div>
         </div>

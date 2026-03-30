@@ -144,9 +144,10 @@ export default function ProductDetail() {
                     <div className="flex-1 space-y-6">
                         <div className="aspect-[4/5] rounded-[3rem] overflow-hidden bg-gray-50 border border-gray-100 relative group">
                             <img 
-                                src={product.images?.[activeImage] || product.image} 
+                                src={product.images?.[activeImage] || product.image || 'https://placehold.co/400x400?text=Product'} 
                                 alt={product.name} 
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
                             />
                             {product.stock <= 5 && product.stock > 0 && (
                                 <div className="absolute top-6 left-6 bg-red-500 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">

@@ -106,7 +106,8 @@ export default function Checkout() {
         try {
             const orderData = {
                 shippingAddress: formData,
-                paymentMethod: paymentMethod
+                paymentMethod: paymentMethod,
+                promoCode: appliedPromo?.code
             };
             // Create the order first
             const orderRes = await orderService.create(orderData);
@@ -198,10 +199,10 @@ export default function Checkout() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-16 items-start">
+                <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8 lg:gap-16 items-start">
                     
                     {/* Forms */}
-                    <div className="flex-1 space-y-12 w-full">
+                    <div className="flex-1 space-y-12 w-full order-2 lg:order-1">
                         
                         {/* Address Section */}
                         <section className="space-y-8">
@@ -342,15 +343,20 @@ export default function Checkout() {
                     </div>
 
                     {/* Sidebar Summary */}
-                    <div className="w-full lg:w-[450px] shrink-0 sticky top-32">
-                        <div className="bg-white rounded-[3rem] p-10 border border-gray-100 shadow-xl shadow-gray-200/50">
+                    <div className="w-full lg:w-[450px] shrink-0 lg:sticky lg:top-32 order-1 lg:order-2">
+                        <div className="bg-white rounded-[3rem] p-8 lg:p-10 border border-gray-100 shadow-xl shadow-gray-200/50">
                             <h2 className="text-2xl font-black text-gray-900 mb-10 tracking-tight">Récapitulatif</h2>
                             
-                            <div className="space-y-6 mb-10 pb-10 border-b border-gray-50 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="space-y-6 mb-10 pb-10 border-b border-gray-50 max-h-[300px] lg:max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                 {cart?.items.map(item => (
                                     <div key={item._id} className="flex gap-5 group">
                                         <div className="w-20 h-20 bg-gray-50 rounded-2xl overflow-hidden shrink-0 border border-gray-100 group-hover:scale-105 transition-transform">
-                                            <img src={item.product?.images?.[0] || item.product?.image} alt={item.product?.name} className="w-full h-full object-cover" />
+                                            <img 
+                                                src={item.product?.images?.[0] || item.product?.image || 'https://placehold.co/400x400?text=Product'} 
+                                                alt={item.product?.name} 
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
+                                            />
                                         </div>
                                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                                             <h4 className="text-sm font-black text-gray-900 truncate mb-1">{item.product?.name || 'Produit'}</h4>

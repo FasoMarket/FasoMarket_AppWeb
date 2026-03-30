@@ -176,7 +176,12 @@ export default function Cart() {
                                         </button>
 
                                         <div className="w-full sm:w-48 h-48 bg-gray-100 rounded-[2rem] overflow-hidden shrink-0">
-                                            <img src={item.product?.images?.[0] || item.product?.image} alt={item.product?.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                            <img 
+                                                src={item.product?.images?.[0] || item.product?.image || 'https://placehold.co/400x400?text=Product'} 
+                                                alt={item.product?.name} 
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                                onError={(e) => { e.target.src = 'https://placehold.co/400x400?text=Product'; }}
+                                            />
                                         </div>
                                         
                                         <div className="flex-1 flex flex-col justify-between py-2">

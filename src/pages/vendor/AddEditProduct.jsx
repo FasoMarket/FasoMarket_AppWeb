@@ -10,24 +10,30 @@ import {
   Percent,
   Calendar,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Store
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { productService } from '../../services/productService';
+import { vendorService } from '../../services/vendorService';
 import ConfirmModal from '../../components/ConfirmModal';
+import NoShopState from '../../components/NoShopState';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AddEditProduct() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const { showToast } = useToast();
   const isEditing = !!id;
 
-  const [loading, setLoading] = useState(isEditing);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [hasNoStore, setHasNoStore] = useState(false);
   const [imageToDelete, setImageToDelete] = useState(null);
-  const { showToast } = useToast();
-  
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [existingImages, setExistingImages] = useState([]);
@@ -42,12 +48,65 @@ export default function AddEditProduct() {
     stock: ''
   });
 
+  // Check if vendor is approved - render after all hooks
+  if (!user?.isVendorApproved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-sm w-full bg-white rounded-2xl shadow-lg p-6 text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <Lock className="text-red-600" size={24} />
+            </div>
+          </div>
+          <div>
+            <h1 className="text-lg font-black text-gray-900">Accès Restreint</h1>
+            <p className="text-sm text-gray-600 mt-1">Compte en attente d'approbation (24-48h)</p>
+          </div>
+          <button
+            onClick={() => navigate('/vendor/dashboard')}
+            className="w-full py-2 bg-primary text-white rounded-lg font-bold text-sm hover:bg-primary/90 transition-colors"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   useEffect(() => {
-    fetchCategories();
-    if (isEditing) {
-      fetchProduct();
-    }
+    checkStoreAndInit();
   }, [id, isEditing]);
+
+  const checkStoreAndInit = async () => {
+    try {
+      setLoading(true);
+      // Vérifier si le vendeur a une boutique
+      const storeRes = await vendorService.getMyStore();
+      const store = storeRes.data?.data || storeRes.data;
+      const storeId = store?._id || store?.id;
+      
+      if (!storeId) {
+        setHasNoStore(true);
+        setLoading(false);
+        return;
+      }
+
+      // Si boutique existe, charger les catégories et le produit si édition
+      await fetchCategories();
+      if (isEditing) {
+        await fetchProduct();
+      }
+    } catch (err) {
+      console.error('Erreur initialisation:', err);
+      if (err.response?.status === 404) {
+        setHasNoStore(true);
+      } else {
+        setError('Erreur lors du chargement.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -157,6 +216,31 @@ export default function AddEditProduct() {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  // Afficher l'état "Pas de boutique" si le vendeur n'a pas encore de boutique
+  if (hasNoStore) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-500">
+        <div className="flex items-center gap-6 mb-8">
+          <button 
+            onClick={() => navigate(-1)}
+            className="p-4 bg-white border border-slate-100 rounded-3xl hover:bg-slate-50 transition-all text-slate-400 hover:text-primary shadow-sm outline-none"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-3xl font-black italic tracking-tighter text-slate-900">
+              {isEditing ? "Modifier Produit" : "Nouveau Produit"}
+            </h1>
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400 mt-1">
+              Ajoutez vos produits sur FasoMarket
+            </p>
+          </div>
+        </div>
+        <NoShopState variant="compact" />
       </div>
     );
   }

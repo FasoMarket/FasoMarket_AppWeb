@@ -8,7 +8,6 @@ import {
   Settings,
   Store,
   Bell,
-  Search,
   Plus,
   LogOut,
   ShieldCheck,
@@ -22,7 +21,9 @@ import {
   MessageCircle,
   ShoppingBag,
   Wallet,
-  Megaphone
+  Megaphone,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 
 import { cn } from '../utils/cn';
@@ -31,20 +32,19 @@ import NotificationBell from '../components/NotificationBell';
 import PageWrapper from '../components/PageWrapper';
 import { vendorAdvancedService } from '../services/vendorAdvancedService';
 import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import API from '../services/api';
 
 
 const vendorNavigation = [
   { name: 'Dashboard', href: '/vendor/dashboard', icon: LayoutDashboard },
   { name: 'Ma boutique', href: '/vendor/store', icon: Store },
   { name: 'Produits', href: '/vendor/products', icon: Package },
-  { name: 'Collections', href: '/vendor/collections', icon: Layers },
   { name: 'Promotions', href: '/vendor/promotions', icon: Percent },
   { name: 'Commandes', href: '/vendor/orders', icon: ShoppingBag },
   { name: 'Avis clients', href: '/vendor/reviews', icon: Star },
-  { name: 'Analytiques', href: '/vendor/analytics', icon: BarChart2 },
-  { name: 'Finances',    href: '/vendor/finances',  icon: DollarSign },
   { name: 'Mon Wallet',  href: '/vendor/wallet',    icon: Wallet },
-  { name: 'Offres clients', href: '/vendor/offers', icon: Megaphone },
+  { name: 'Annonces', href: '/vendor/announcements', icon: Bell },
   { name: 'Messagerie', href: '/vendor/messages', icon: MessageCircle },
   { name: 'Paramètres', href: '/vendor/settings', icon: Settings },
 ];
@@ -53,13 +53,36 @@ const vendorNavigation = [
 export default function VendorLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [store, setStore] = useState(null);
-  const user = authService.getUser();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const authUser = authService.getUser();
 
   useEffect(() => {
     vendorAdvancedService.getMyStore()
-      .then(res => setStore(res.data))
+      .then(res => {
+        const storeData = res.data?.data || res.data;
+        setStore(storeData);
+      })
       .catch(err => console.error("Erreur chargement boutique:", err));
+  }, []);
+
+  // Charger le nombre d'annonces non lues
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await API.get('/communications');
+        const commsArray = res.data?.data || res.data || [];
+        const vendorComms = Array.isArray(commsArray) 
+          ? commsArray.filter(c => (c.targetRole === 'vendor' || c.targetRole === 'all') && !c.isRead)
+          : [];
+        setUnreadCount(vendorComms.length);
+      } catch (err) {
+        console.error('Erreur chargement annonces:', err);
+      }
+    };
+
+    fetchUnreadCount();
   }, []);
 
   const handleLogout = () => {
@@ -67,6 +90,7 @@ export default function VendorLayout() {
     navigate('/login');
   };
 
+  const isVendorApproved = user?.isVendorApproved || authUser?.isVendorApproved;
 
   return (
     <div className="flex min-h-screen bg-[#f6f8f6]">
@@ -82,7 +106,7 @@ export default function VendorLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {vendorNavigation.map((item) => {
             const isActive = location.pathname.startsWith(item.href);
             const isStoreLink = item.name === 'Ma boutique';
@@ -95,7 +119,7 @@ export default function VendorLayout() {
                 to={href}
                 target={target}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium group",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium group relative",
                   isActive
                     ? "bg-primary/10 text-primary font-semibold shadow-sm shadow-primary/20"
                     : "text-slate-600 hover:bg-primary/5 hover:text-slate-900"
@@ -107,6 +131,11 @@ export default function VendorLayout() {
                 })()}
                 <span className="font-medium text-sm">{item.name}</span>
                 {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                {item.name === 'Annonces' && unreadCount > 0 && (
+                  <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -115,10 +144,10 @@ export default function VendorLayout() {
         <div className="p-4 border-t border-primary/10">
           <div className="flex items-center gap-3 p-2">
             <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-black">
-              {user?.name?.[0]?.toUpperCase() || 'V'}
+              {authUser?.name?.[0]?.toUpperCase() || 'V'}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-bold truncate">{user?.name || 'Vendeur Faso'}</p>
+              <p className="text-sm font-bold truncate">{authUser?.name || 'Vendeur Faso'}</p>
               <p className="text-xs text-slate-500 truncate">{store?.name || 'Ma Boutique'}</p>
             </div>
           </div>
@@ -135,30 +164,16 @@ export default function VendorLayout() {
 
       {/* Main Content */}
       <main className="flex-1 ml-64 p-8">
-        {/* Shared Header */}
-        <header className="flex justify-between items-center mb-10">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">
-              {vendorNavigation.find(n => location.pathname.startsWith(n.href))?.name || 'Tableau de bord'}
-            </h2>
-            <p className="text-slate-500 mt-1">Bienvenue sur votre espace de vente FasoMarket.</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <input
-                className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent w-64 outline-none transition-all"
-                placeholder="Rechercher..."
-                type="text"
-              />
+        {/* Pending Approval Banner */}
+        {!isVendorApproved && (
+          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3">
+            <Clock className="h-5 w-5 text-amber-600 flex-shrink-0 animate-pulse" />
+            <div className="flex-1">
+              <p className="text-sm font-bold text-amber-900">Compte en attente d'approbation (24-48h)</p>
+              <p className="text-xs text-amber-700 mt-0.5">Vous recevrez un email dès validation</p>
             </div>
-            <NotificationBell />
-            <Link to="/vendor/products/new" className="bg-primary text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-md shadow-primary/20">
-              <Plus size={20} />
-              Nouveau Produit
-            </Link>
           </div>
-        </header>
+        )}
 
         <PageWrapper>
           <Outlet />

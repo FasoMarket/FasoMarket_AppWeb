@@ -2,7 +2,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 
 // https://vite.dev/config/
-// Added comment to trigger reload after dependency install
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -17,6 +16,7 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/uploads': {
         target: 'http://localhost:5000',
